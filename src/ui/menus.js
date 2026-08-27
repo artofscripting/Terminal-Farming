@@ -4,8 +4,8 @@ import { sellableItems, nextToolTier, itemName, seedPrice, marketFactor, dailyDe
 import { expandPrice, nextExpansionPlot } from '../systems/plotmarket.js';
 import { canCook, listRecipes, dishesInInventory } from '../systems/kitchen.js';
 import { recipeDef } from '../content/recipes.js';
-import { ranchSummary } from '../systems/ranch.js';
-import { RANCH_BUILDINGS, ANIMALS, HAY_COST, ranchBuildingDef } from '../content/animals.js';
+import { ranchSummary, nextRanchLevel } from '../systems/ranch.js';
+import { RANCH_BUILDINGS, ANIMALS, HAY_COST, ranchBuildingDef, buildingLevelDef } from '../content/animals.js';
 import { laborSummary, ROLES } from '../systems/labor.js';
 import { npcDef } from '../content/npcs.js';
 import { heartsOf, availableFor, activeFor, canTurnIn, isBestFriend } from '../systems/quests.js';
@@ -156,14 +156,24 @@ export function renderRanchShop(renderer, state) {
   let y = 3;
   for (const b of RANCH_BUILDINGS) {
     const built = s.buildings[b.id] >= 0;
-    row(renderer, y++, KEYS[items.length], `Buy ${b.name.padEnd(6)} ${b.cost}g` + (built ? '  (built)' : ''), built ? DIM : TEXT);
-    items.push({ type: 'building', id: b.id });
+    if (built) {
+      const next = nextRanchLevel(state, b.id);
+      const label = next
+        ? `Upgrade ${b.name.padEnd(6)} Lv${s.levels[b.id]}->${next.level}  ${next.cost}g  (${next.slots} slots)`
+        : `${b.name.padEnd(6)} Lv${s.levels[b.id]} (max)`;
+      row(renderer, y++, KEYS[items.length], label, next ? TEXT : DIM);
+      items.push(next ? { type: 'ranchUpgrade', id: b.id } : { type: 'none' });
+    } else {
+      const base = buildingLevelDef(b, 1);
+      row(renderer, y++, KEYS[items.length], `Buy ${b.name.padEnd(6)} ${base.cost}g  (${base.slots} slots)`, TEXT);
+      items.push({ type: 'building', id: b.id });
+    }
   }
   for (const a of ANIMALS) {
     const building = ranchBuildingDef(a.building);
     const count = s.buildings[a.building];
     const label = `Buy ${a.name.padEnd(8)} ${a.cost}g` +
-      (count >= 0 ? `  (${count}/${building.slots} in ${building.name})` : `  (needs ${building.name})`);
+      (count >= 0 ? `  (${count}/${s.slots[a.building]} in ${building.name})` : `  (needs ${building.name})`);
     row(renderer, y++, KEYS[items.length], label);
     items.push({ type: 'animal', id: a.id });
   }
@@ -183,7 +193,8 @@ export function renderRanch(renderer, state) {
   for (const b of RANCH_BUILDINGS) {
     const count = s.buildings[b.id];
     const housed = ANIMALS.filter((a) => a.building === b.id).map((a) => `${a.name.toLowerCase()}s`).join('/');
-    renderer.text(3, y++, `${b.name}: ${count >= 0 ? `${count}/${b.slots} ${housed}` : 'not built'}`, TEXT, PANEL_BG);
+    const status = count >= 0 ? `Lv${s.levels[b.id]}  ${count}/${s.slots[b.id]} ${housed}` : 'not built';
+    renderer.text(3, y++, `${b.name}: ${status}`, TEXT, PANEL_BG);
   }
   y++;
   renderer.text(3, y++, `Auto-feed: ${s.autoFeed ? 'ON' : 'OFF'}`, s.autoFeed ? [130, 220, 130] : DIM, PANEL_BG);

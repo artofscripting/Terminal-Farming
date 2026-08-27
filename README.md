@@ -235,14 +235,14 @@ Maintenance and fuel matter — an empty tank stops work.
 
 ## Ranch (`;` and shop `8`)
 
-| Building | Cost | Slots | Animal | Feed / day | Product |
-|----------|------|-------|--------|------------|---------|
-| Coop `C` | 400g | 4 | Chicken 150g | 1 hay | Egg (~20g) |
-| Barn `B` | 800g | 3 (shared) | Cow 500g | 2 hay | Milk (~45g) |
-| Barn `B` | (shared) | (shared) | Goat 350g | 1 hay | Wool (~38g) |
-| Hive `V` | 350g | 3 | Bee 250g | 1 hay | Honey (~60g) |
+| Building | Lv1 cost / slots | Animal | Feed / day | Product |
+|----------|-------------------|--------|------------|---------|
+| Coop `C` | 400g / 4 | Chicken 150g | 1 hay | Egg (~20g) |
+| Barn `B` | 800g / 3 (shared) | Cow 500g | 2 hay | Milk (~45g) |
+| Barn `B` | (shared) | Goat 350g | 1 hay | Wool (~38g) |
+| Hive `V` | 350g / 3 | Bee 250g | 1 hay | Honey (~60g) |
 
-A building's slots are a shared pool across every animal it houses — a Barn can mix cows and goats in any combination up to its slot count.
+A building's slots are a shared pool across every animal it houses — a Barn can mix cows and goats in any combination up to its slot count. Each building has **3 upgrade levels** (buy the level-1 building, then upgrade it further from the ranch shop) — a Coop goes 4 → 7 → 12 slots, Barn 3 → 6 → 10, Hive 3 → 6 → 10, at rising gold cost per tier.
 
 - Buy **hay** in the ranch shop submenu.
 - Use **`;`** to feed or enable **auto-feed**.

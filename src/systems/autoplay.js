@@ -3,14 +3,16 @@
 // sell, buy seeds, upgrade the farm, or sleep -- picking whatever is most
 // useful right now.
 import { Crops } from '../content/registry.js';
-import { RANCH_BUILDINGS, ANIMALS, HAY_COST } from '../content/animals.js';
+import { RANCH_BUILDINGS, ANIMALS, HAY_COST, buildingLevelDef } from '../content/animals.js';
 import { plotTiles } from '../world/plots.js';
 import { count } from './inventory.js';
 import { seedPrice, buySeed, sellableItems, sellAllItems, nextToolTier, upgradeTool } from './economy.js';
 import { meetsCropLevel } from './skills.js';
 import { sleep } from './calendar.js';
 import { DAYS_PER_SEASON } from '../state/gameState.js';
-import { buyRanchBuilding, buyAnimal, buyHay, toggleAutoFeed, ranchSummary } from './ranch.js';
+import {
+  buyRanchBuilding, upgradeRanchBuilding, nextRanchLevel, buyAnimal, buyHay, toggleAutoFeed, ranchSummary,
+} from './ranch.js';
 import { nextExpansionPlot, expandFarm, expandPrice } from './plotmarket.js';
 import * as farming from './farming.js';
 
@@ -111,8 +113,19 @@ function tryFarmUpgrade(state, tiles) {
 
   const summary = ranchSummary(state);
   for (const b of RANCH_BUILDINGS) {
-    if (summary.buildings[b.id] < 0 && affordable(b.cost)) {
+    if (summary.buildings[b.id] < 0 && affordable(buildingLevelDef(b, 1).cost)) {
       const res = buyRanchBuilding(state, b.id);
+      if (res.ok) return res.msg;
+    }
+  }
+
+  // Level up already-built structures (more slots) before buying more
+  // animals for them.
+  for (const b of RANCH_BUILDINGS) {
+    if (summary.buildings[b.id] < 0) continue;
+    const next = nextRanchLevel(state, b.id);
+    if (next && affordable(next.cost)) {
+      const res = upgradeRanchBuilding(state, b.id);
       if (res.ok) return res.msg;
     }
   }
@@ -131,9 +144,8 @@ function tryFarmUpgrade(state, tiles) {
   }
 
   for (const a of ANIMALS) {
-    const building = RANCH_BUILDINGS.find((b) => b.id === a.building);
     const housed = summary.buildings[a.building];
-    if (housed >= 0 && housed < building.slots && affordable(a.cost)) {
+    if (housed >= 0 && housed < summary.slots[a.building] && affordable(a.cost)) {
       const res = buyAnimal(state, a.id);
       if (res.ok) return res.msg;
     }

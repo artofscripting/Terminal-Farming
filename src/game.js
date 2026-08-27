@@ -8,7 +8,7 @@ import { gather } from './systems/forage.js';
 import { buyPlotAt, expandFarm } from './systems/plotmarket.js';
 import { buySeed, sellItem, sellAllItems, buyFertilizer, buyDailyDeal, upgradeTool } from './systems/economy.js';
 import { cook, eat, buyKitchen } from './systems/kitchen.js';
-import { buyRanchBuilding, buyAnimal, buyHay, feedAll, toggleAutoFeed } from './systems/ranch.js';
+import { buyRanchBuilding, upgradeRanchBuilding, buyAnimal, buyHay, feedAll, toggleAutoFeed } from './systems/ranch.js';
 import { buyTractor, buyFuel, toggleMount, cycleImplement, toggleAuto, cycleZone, tractorField } from './systems/machines.js';
 import { hireWorker, fireWorker, reassignZone, upgradeBunkhouse } from './systems/labor.js';
 import { acceptQuest, turnInQuest } from './systems/quests.js';
@@ -519,6 +519,7 @@ export class Game {
       const item = this.ui.shopKeys[keyIndex(k)];
       if (item) {
         if (item.type === 'building') this.setStatus(buyRanchBuilding(this.state, item.id).msg);
+        else if (item.type === 'ranchUpgrade') this.setStatus(upgradeRanchBuilding(this.state, item.id).msg);
         else if (item.type === 'animal') this.setStatus(buyAnimal(this.state, item.id).msg);
         else if (item.type === 'hay') this.setStatus(buyHay(this.state, item.qty).msg);
       }

@@ -11,10 +11,34 @@ export const ANIMALS = [
 
 // Structures that house animals. A building can house more than one animal
 // type (its slots are a shared pool) -- `houses` is just display text.
+// `levels` are upgrade tiers: buying the building places it at level 1, and
+// upgradeRanchBuilding() (systems/ranch.js) steps it through the rest, each
+// tier raising its slot count.
 export const RANCH_BUILDINGS = [
-  { id: 'coop', name: 'Coop', glyph: 'C', cost: 400, slots: 4, houses: 'chicken' },
-  { id: 'barn', name: 'Barn', glyph: 'B', cost: 800, slots: 3, houses: 'cow, goat' },
-  { id: 'hive', name: 'Hive', glyph: 'V', cost: 350, slots: 3, houses: 'bee' },
+  {
+    id: 'coop', name: 'Coop', glyph: 'C', houses: 'chicken',
+    levels: [
+      { level: 1, cost: 400, slots: 4 },
+      { level: 2, cost: 900, slots: 7 },
+      { level: 3, cost: 1800, slots: 12 },
+    ],
+  },
+  {
+    id: 'barn', name: 'Barn', glyph: 'B', houses: 'cow, goat',
+    levels: [
+      { level: 1, cost: 800, slots: 3 },
+      { level: 2, cost: 1600, slots: 6 },
+      { level: 3, cost: 3000, slots: 10 },
+    ],
+  },
+  {
+    id: 'hive', name: 'Hive', glyph: 'V', houses: 'bee',
+    levels: [
+      { level: 1, cost: 350, slots: 3 },
+      { level: 2, cost: 800, slots: 6 },
+      { level: 3, cost: 1500, slots: 10 },
+    ],
+  },
 ];
 
 export const HAY_COST = 10;
@@ -25,4 +49,8 @@ export function animalDef(id) {
 
 export function ranchBuildingDef(id) {
   return RANCH_BUILDINGS.find((b) => b.id === id);
+}
+
+export function buildingLevelDef(buildingDef, level) {
+  return buildingDef.levels.find((l) => l.level === level);
 }

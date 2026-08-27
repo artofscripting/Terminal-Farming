@@ -1,4 +1,4 @@
-import { ANIMALS, RANCH_BUILDINGS, HAY_COST, animalDef, ranchBuildingDef } from '../content/animals.js';
+import { ANIMALS, RANCH_BUILDINGS, HAY_COST, animalDef, ranchBuildingDef, buildingLevelDef } from '../content/animals.js';
 import { add } from './inventory.js';
 import { qualityKey } from './farming.js';
 import { plotTiles } from '../world/plots.js';
@@ -11,9 +11,15 @@ export function ranchState(state) {
   if (!state.ranch) state.ranch = { hay: 0, autoFeed: false, buildings: {} };
   if (!state.ranch.buildings) state.ranch.buildings = {};
   for (const b of RANCH_BUILDINGS) {
-    if (!state.ranch.buildings[b.id]) state.ranch.buildings[b.id] = { built: false, tile: null, animals: [] };
+    if (!state.ranch.buildings[b.id]) state.ranch.buildings[b.id] = { built: false, tile: null, animals: [], level: 1 };
+    if (!state.ranch.buildings[b.id].level) state.ranch.buildings[b.id].level = 1; // backfill pre-levels saves
   }
   return state.ranch;
+}
+
+// Current slot capacity for a built structure, per its level.
+function slotsFor(buildingDef, struct) {
+  return buildingLevelDef(buildingDef, struct.level).slots;
 }
 
 function findFreeOwnedTile(state) {
@@ -33,16 +39,17 @@ function structFor(state, buildingId) {
   return ranchState(state).buildings[buildingId];
 }
 
-// Buy a coop or barn: stamps its glyph on a free owned tile.
+// Buy a coop or barn at level 1: stamps its glyph on a free owned tile.
 export function buyRanchBuilding(state, buildingId) {
   const def = ranchBuildingDef(buildingId);
   if (!def) return { ok: false, msg: 'Unknown building.' };
   const struct = structFor(state, buildingId);
   if (struct.built) return { ok: false, msg: `You already have a ${def.name}.` };
-  if (state.player.gold < def.cost) return { ok: false, msg: `Need ${def.cost}g.` };
+  const base = buildingLevelDef(def, 1);
+  if (state.player.gold < base.cost) return { ok: false, msg: `Need ${base.cost}g.` };
   const spot = findFreeOwnedTile(state);
   if (!spot) return { ok: false, msg: 'No free owned tile to build on.' };
-  state.player.gold -= def.cost;
+  state.player.gold -= base.cost;
   const tile = state.world.getTile(spot.x, spot.y);
   tile.building = buildingId;
   tile.tilled = false;
@@ -50,7 +57,30 @@ export function buyRanchBuilding(state, buildingId) {
   state.world.touch(spot.x, spot.y);
   struct.built = true;
   struct.tile = { x: spot.x, y: spot.y };
-  return { ok: true, msg: `Built a ${def.name} (${def.glyph}) for ${def.cost}g.` };
+  struct.level = 1;
+  return { ok: true, msg: `Built a ${def.name} (${def.glyph}) for ${base.cost}g.` };
+}
+
+// Cost/level to raise a ranch building to its next tier, or null if maxed
+// or not yet built.
+export function nextRanchLevel(state, buildingId) {
+  const def = ranchBuildingDef(buildingId);
+  if (!def) return null;
+  const struct = structFor(state, buildingId);
+  if (!struct.built) return null;
+  return buildingLevelDef(def, struct.level + 1) || null;
+}
+
+// Upgrade a built ranch building to its next level (more slots).
+export function upgradeRanchBuilding(state, buildingId) {
+  const def = ranchBuildingDef(buildingId);
+  if (!def) return { ok: false, msg: 'Unknown building.' };
+  const next = nextRanchLevel(state, buildingId);
+  if (!next) return { ok: false, msg: `${def.name} can't be upgraded further (build it first, or it's maxed).` };
+  if (state.player.gold < next.cost) return { ok: false, msg: `Need ${next.cost}g.` };
+  state.player.gold -= next.cost;
+  structFor(state, buildingId).level = next.level;
+  return { ok: true, msg: `Upgraded ${def.name} to level ${next.level} (${next.slots} slots) for ${next.cost}g.` };
 }
 
 // Buy an animal into its housing structure (if a slot is free).
@@ -60,7 +90,7 @@ export function buyAnimal(state, animalId) {
   const building = ranchBuildingDef(def.building);
   const struct = structFor(state, def.building);
   if (!struct.built) return { ok: false, msg: `Build a ${building.name} first.` };
-  if (struct.animals.length >= building.slots) return { ok: false, msg: `${building.name} is full.` };
+  if (struct.animals.length >= slotsFor(building, struct)) return { ok: false, msg: `${building.name} is full.` };
   if (state.player.gold < def.cost) return { ok: false, msg: `Need ${def.cost}g.` };
   state.player.gold -= def.cost;
   struct.animals.push({ type: animalId, fed: false, careStreak: 0 });
@@ -138,11 +168,15 @@ export function ranchOvernight(state) {
 export function ranchSummary(state) {
   const r = ranchState(state);
   const buildings = {};
+  const levels = {};
+  const slots = {};
   for (const b of RANCH_BUILDINGS) {
     const struct = r.buildings[b.id];
     buildings[b.id] = struct.built ? struct.animals.length : -1;
+    levels[b.id] = struct.built ? struct.level : 0;
+    slots[b.id] = struct.built ? slotsFor(b, struct) : 0;
   }
-  return { hay: r.hay, autoFeed: r.autoFeed, buildings };
+  return { hay: r.hay, autoFeed: r.autoFeed, buildings, levels, slots };
 }
 
 export { ANIMALS, RANCH_BUILDINGS };
