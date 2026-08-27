@@ -83,16 +83,20 @@ function runAt(state, x, y, action) {
 // Once there's over UPGRADE_GOLD_THRESHOLD gold and no more urgent farm work,
 // spend the surplus in order: tool tiers, ranch buildings, hay/auto-feed,
 // animals to fill them, and only once all of that is maxed out, adjacent
-// land. Skips anything that fails (e.g. a building with no free tile to sit
-// on) rather than getting stuck retrying it forever -- only a purchase that
-// actually succeeds counts as this tick's action.
+// land. UPGRADE_GOLD_THRESHOLD is a floor, not just a starting gate -- every
+// purchase below only goes through if gold afterward would still be at or
+// above it, so auto-play always keeps that much in reserve. Skips anything
+// that fails outright (e.g. a building with no free tile to sit on) rather
+// than getting stuck retrying it forever -- only a purchase that actually
+// succeeds counts as this tick's action.
 function tryFarmUpgrade(state) {
   const p = state.player;
   if (p.gold <= UPGRADE_GOLD_THRESHOLD) return null;
+  const affordable = (cost) => p.gold - cost >= UPGRADE_GOLD_THRESHOLD;
 
   for (const toolId of Object.keys(p.tools)) {
     const next = nextToolTier(state, toolId);
-    if (next && p.gold >= next.cost) {
+    if (next && affordable(next.cost)) {
       const res = upgradeTool(state, toolId);
       if (res.ok) return res.msg;
     }
@@ -100,7 +104,7 @@ function tryFarmUpgrade(state) {
 
   const summary = ranchSummary(state);
   for (const b of RANCH_BUILDINGS) {
-    if (summary.buildings[b.id] < 0 && p.gold >= b.cost) {
+    if (summary.buildings[b.id] < 0 && affordable(b.cost)) {
       const res = buyRanchBuilding(state, b.id);
       if (res.ok) return res.msg;
     }
@@ -110,7 +114,8 @@ function tryFarmUpgrade(state) {
   if (anyRanchBuilt) {
     if (!summary.autoFeed) return toggleAutoFeed(state);
     if (summary.hay < HAY_RESERVE) {
-      const qty = Math.min(10, Math.floor(p.gold / HAY_COST));
+      const spendable = p.gold - UPGRADE_GOLD_THRESHOLD;
+      const qty = Math.min(10, Math.floor(spendable / HAY_COST));
       if (qty > 0) {
         const res = buyHay(state, qty);
         if (res.ok) return res.msg;
@@ -121,7 +126,7 @@ function tryFarmUpgrade(state) {
   for (const a of ANIMALS) {
     const building = RANCH_BUILDINGS.find((b) => b.id === a.building);
     const housed = summary.buildings[a.building];
-    if (housed >= 0 && housed < building.slots && p.gold >= a.cost) {
+    if (housed >= 0 && housed < building.slots && affordable(a.cost)) {
       const res = buyAnimal(state, a.id);
       if (res.ok) return res.msg;
     }
@@ -129,7 +134,7 @@ function tryFarmUpgrade(state) {
 
   // Tools maxed, every building built and fully animal-stocked -- fully
   // upgraded, so grow the farm itself.
-  if (nextExpansionPlot(state) && p.gold >= expandPrice(state)) {
+  if (nextExpansionPlot(state) && affordable(expandPrice(state))) {
     const res = expandFarm(state);
     if (res.ok) return res.msg;
   }
