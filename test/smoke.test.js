@@ -115,8 +115,8 @@ test('shop: sell items, upgrade tools, and expand farm', () => {
   assert.strictEqual(state.ownedPlots.size, before + 1);
 });
 
-test('25 crops exist', () => {
-  assert.strictEqual(Crops.all().length, 25);
+test('27 crops exist', () => {
+  assert.strictEqual(Crops.all().length, 27);
 });
 
 test('kitchen: buy, cook (with quality carry + dish ingredient), and eat', () => {

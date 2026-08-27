@@ -26,4 +26,9 @@ export const CROPS = [
   { id: 'pea',     name: 'Pea',     seasons: ['spring'],           daysWatered: 3, stages: 3, seedCost: 10, sellBase: 24, glyphGrow: 'o', glyphRipe: '0', color: '#8ac060', colorRipe: '#aae080' },
   { id: 'squash',  name: 'Squash',  seasons: ['fall'],             daysWatered: 6, stages: 5, seedCost: 24, sellBase: 72, glyphGrow: 'v', glyphRipe: 'V', color: '#d09030', colorRipe: '#f0b040', minFarmingLevel: 3 },
   { id: 'sunflower', name: 'Sunflower', seasons: ['summer', 'fall'], daysWatered: 5, stages: 5, seedCost: 16, sellBase: 48, glyphGrow: 'x', glyphRipe: '8', color: '#e0c040', colorRipe: '#f8e060' },
+  // Grows in every season (so it's never out-of-season, and -- since frost
+  // immunity is keyed on growing in winter -- never frost-killed either): a
+  // full year, 112 days watered, to mature. Feeds the sawmill (Part 3).
+  { id: 'oak', name: 'Oak Tree', seasons: ['spring', 'summer', 'fall', 'winter'], daysWatered: 112, stages: 112, seedCost: 100, sellBase: 45, glyphGrow: 'r', glyphRipe: 'T', color: '#3a6b2a', colorRipe: '#6b4a2a', minFarmingLevel: 4 },
+  { id: 'cotton', name: 'Cotton', seasons: ['summer'], daysWatered: 5, stages: 4, seedCost: 18, sellBase: 45, glyphGrow: 'c', glyphRipe: 'F', color: '#7a9a6a', colorRipe: '#f0f0e8' },
 ];

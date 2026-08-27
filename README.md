@@ -143,9 +143,11 @@ Each day you walk the farm, spend energy on work, then **`z` sleep**. Overnight:
 | Turnip | 3 | 10g | 25g | Spring, Fall |
 | Potato | 4 | 15g | 40g | Spring, Summer |
 | Wheat | 5 | 20g | 55g | Summer, Fall |
+| Cotton | 5 | 18g | 45g | Summer |
+| Oak Tree | 112 (~1 year) | 100g | 45g | All year |
 | *+22 more* | 2–7d | 8–35g | 20–100g | See shop |
 
-**25 crops total.** Cycle with **`c`**. The shop (`o` → `1`) lists only **in-season** seeds (keys `1–9`, `0`, `a–z`). Winter favors its own frost-immune crops (beet, garlic, kale, spinach, leek).
+**27 crops total.** Cycle with **`c`**. The shop (`o` → `1`) lists only **in-season** seeds (keys `1–9`, `0`, `a–z`). Winter favors its own frost-immune crops (beet, garlic, kale, spinach, leek). **Oak Tree** grows in every season (never dies to season-change or frost) but takes a full year (112 watered days) — miss watering 3 nights running and it dies just like any other crop, so irrigation is the practical way to see one through. Feeds the sawmill; **Cotton** feeds the cotton gin (see Workshops below).
 
 **Market prices drift** day to day, ±5% per item (seeds and sell prices alike) — watch for `▲`/`▼` next to a price in the shop, plus a tiny 5-day trend bar (e.g. `▅▁▇▅▇`) so you can see whether a price is climbing or about to dip.
 
