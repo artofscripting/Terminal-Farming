@@ -71,6 +71,13 @@ function nearestTo(p, list) {
   return best;
 }
 
+// True once every farmable tile is tilled, planted, and watered -- rock/water/
+// tree pockets inside an owned plot don't count against it, only ground that
+// could actually be worked but isn't yet.
+function isFieldFullyWorked(tiles) {
+  return tiles.every(({ tile }) => (tile.crop ? tile.watered : !TILLABLE.includes(tile.base)));
+}
+
 // Runs the chosen field action at (x,y); if it reports being too tired,
 // sleep instead (same tired-detection idiom autoFarm/autoHarvest already use).
 function runAt(state, x, y, action) {
@@ -89,7 +96,7 @@ function runAt(state, x, y, action) {
 // that fails outright (e.g. a building with no free tile to sit on) rather
 // than getting stuck retrying it forever -- only a purchase that actually
 // succeeds counts as this tick's action.
-function tryFarmUpgrade(state) {
+function tryFarmUpgrade(state, tiles) {
   const p = state.player;
   if (p.gold <= UPGRADE_GOLD_THRESHOLD) return null;
   const affordable = (cost) => p.gold - cost >= UPGRADE_GOLD_THRESHOLD;
@@ -133,8 +140,11 @@ function tryFarmUpgrade(state) {
   }
 
   // Tools maxed, every building built and fully animal-stocked -- fully
-  // upgraded, so grow the farm itself.
-  if (nextExpansionPlot(state) && affordable(expandPrice(state))) {
+  // upgraded, so grow the farm itself. Only once today's fields are all
+  // tilled, planted, and watered, and there's energy to spare -- otherwise
+  // that gold stays in reserve for finishing the day's actual work instead.
+  const readyToExpand = p.energy > 0 && isFieldFullyWorked(tiles);
+  if (readyToExpand && nextExpansionPlot(state) && affordable(expandPrice(state))) {
     const res = expandFarm(state);
     if (res.ok) return res.msg;
   }
@@ -214,7 +224,7 @@ export function autoPlayStep(state) {
   }
 
   // Nothing left to farm or buy seed for -- spend surplus gold upgrading.
-  const upgradeMsg = tryFarmUpgrade(state);
+  const upgradeMsg = tryFarmUpgrade(state, tiles);
   if (upgradeMsg) return { msg: upgradeMsg, slept: false };
 
   // Fully worked and nothing productive to buy -- advance to the next day.

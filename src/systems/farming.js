@@ -35,6 +35,8 @@ function inSeason(state, cropId) {
   return def.seasons.includes(state.calendar.season);
 }
 
+const PLANT_ENERGY = 1; // planting has no tool tier of its own, so a flat cost
+
 // Energy for a tool action after skill perks:
 // Farming Lv8 makes tilling cheaper; Lv5 makes drought watering cheaper.
 function actionEnergy(state, toolId, base) {
@@ -82,9 +84,11 @@ export function plant(state) {
   if (!meetsCropLevel(state, cropDef)) {
     return `${cropDef.name} needs Farming Lv${cropDef.minFarmingLevel} (you are Lv${state.player.skills.farming.level}).`;
   }
+  if (p.energy < PLANT_ENERGY) return 'Too tired to plant.';
   remove(p.inventory, 'seeds', seedId, 1);
   tile.crop = { id: seedId, stage: 0, wateredToday: false, quality: 0 };
   state.world.touch(p.x, p.y);
+  spend(state, PLANT_ENERGY);
   gainXp(state, 'farming', 2);
   return `Planted ${Crops.get(seedId).name}.`;
 }
@@ -260,7 +264,9 @@ export function autoFarm(state) {
         const msg = till(state);
         if (before === p.energy && /tired/i.test(msg)) { tired = true; break; }
       }
-      plant(state);
+      const beforePlant = p.energy;
+      const plantMsg = plant(state);
+      if (beforePlant === p.energy && /tired/i.test(plantMsg)) { tired = true; break; }
     }
 
     if (tile.tilled && !tile.watered) {

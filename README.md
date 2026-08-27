@@ -61,7 +61,7 @@ All of the above (except movement and `P`) act only **on the tile you're standin
 | `S` | Lifetime stats & achievements (gold earned, crops harvested, days played, ...) |
 | `M` | Overview map — your position, owned plots, and nearby towns on one compressed screen |
 | `H` | Walk home — auto-paths to your house (preferring roads) and travels there one tile at a time, sleeping in place if you run out of energy; press `H` again to cancel |
-| `Z` | Auto-play — runs your farm hands-off, one action every 0.1s: harvests ripe crops, waters, plants, tills bare owned ground, sells everything harvested, and buys more seed once it runs out (picking whatever crop profits best and still safely matures before the next frost risk). Keeps a **2000g** reserve at all times — it only spends surplus above that floor, in order: tool upgrades, then ranch buildings, hay + auto-feed, animals to fill them, and once that's all maxed out, adjacent land. Sleeps when there's truly nothing left to do; press `Z` again to cancel |
+| `Z` | Auto-play — runs your farm hands-off, one action every 0.1s: harvests ripe crops, waters, plants, tills bare owned ground, sells everything harvested, and buys more seed once it runs out (picking whatever crop profits best and still safely matures before the next frost risk). Keeps a **2000g** reserve at all times — it only spends surplus above that floor, in order: tool upgrades, then ranch buildings, hay + auto-feed, animals to fill them, and — only once every owned field is fully tilled, planted, and watered *and* there's energy to spare — adjacent land. Sleeps when there's truly nothing left to do; press `Z` again to cancel |
 | `z` | Sleep (end day, autosave) |
 | `v` / `F5` | Save menu |
 | `F9` | Load menu |
