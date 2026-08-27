@@ -4,6 +4,7 @@
 // useful right now.
 import { Crops } from '../content/registry.js';
 import { RANCH_BUILDINGS, ANIMALS, HAY_COST, buildingLevelDef } from '../content/animals.js';
+import { WORKSHOPS, allRecipes } from '../content/workshops.js';
 import { plotTiles } from '../world/plots.js';
 import { count } from './inventory.js';
 import { seedPrice, buySeed, sellableItems, sellAllItems, nextToolTier, upgradeTool } from './economy.js';
@@ -13,6 +14,7 @@ import { DAYS_PER_SEASON } from '../state/gameState.js';
 import {
   buyRanchBuilding, upgradeRanchBuilding, nextRanchLevel, buyAnimal, buyHay, toggleAutoFeed, ranchSummary,
 } from './ranch.js';
+import { buyWorkshop, workshopState, maxRuns, process as runWorkshopRecipe } from './workshops.js';
 import { nextExpansionPlot, expandFarm, expandPrice } from './plotmarket.js';
 import * as farming from './farming.js';
 
@@ -80,6 +82,30 @@ function isFieldFullyWorked(tiles) {
   return tiles.every(({ tile }) => (tile.crop ? tile.watered : !TILLABLE.includes(tile.base)));
 }
 
+// "cat:id" keys for every ingredient a currently-built workshop could still
+// use -- auto-play holds these back from auto-selling so raw materials get
+// turned into a more valuable good instead of being sold off raw.
+function reservedForProcessing(state) {
+  const ws = workshopState(state);
+  const reserved = new Set();
+  for (const r of allRecipes()) {
+    if (!ws[r.workshopId]?.built) continue;
+    for (const inp of r.inputs) reserved.add(`${inp.cat}:${inp.id}`);
+  }
+  return reserved;
+}
+
+// Run whichever built workshop's recipe has enough materials on hand first
+// (recipes are checked in content/workshops.js's declared order, which is
+// upstream-to-downstream per chain -- e.g. Plank before Toolbox).
+function tryProcess(state) {
+  for (const r of allRecipes()) {
+    if (!workshopState(state)[r.workshopId]?.built) continue;
+    if (maxRuns(state, r) > 0) return runWorkshopRecipe(state, r.workshopId, r.id, Infinity).msg;
+  }
+  return null;
+}
+
 // Runs the chosen field action at (x,y); if it reports being too tired,
 // sleep instead (same tired-detection idiom autoFarm/autoHarvest already use).
 function runAt(state, x, y, action) {
@@ -119,6 +145,14 @@ function tryFarmUpgrade(state, tiles) {
     }
   }
 
+  const ws = workshopState(state);
+  for (const w of WORKSHOPS) {
+    if (!ws[w.id].built && affordable(w.cost)) {
+      const res = buyWorkshop(state, w.id);
+      if (res.ok) return res.msg;
+    }
+  }
+
   // Level up already-built structures (more slots) before buying more
   // animals for them.
   for (const b of RANCH_BUILDINGS) {
@@ -151,8 +185,8 @@ function tryFarmUpgrade(state, tiles) {
     }
   }
 
-  // Tools maxed, every building built and fully animal-stocked -- fully
-  // upgraded, so grow the farm itself. Only once today's fields are all
+  // Tools maxed, every ranch/workshop building built and fully animal-stocked
+  // -- fully upgraded, so grow the farm itself. Only once today's fields are all
   // tilled, planted, and watered, and there's energy to spare -- otherwise
   // that gold stays in reserve for finishing the day's actual work instead.
   const readyToExpand = p.energy > 0 && isFieldFullyWorked(tiles);
@@ -165,11 +199,12 @@ function tryFarmUpgrade(state, tiles) {
 }
 
 // One discrete auto-play action. Priority: harvest ripe crops, water thirsty
-// ones, sell whatever's in the bag, plant into empty tilled ground, till bare
-// owned ground, buy more seed when there's nothing left to plant with, spend
-// surplus gold upgrading the farm, and otherwise sleep. Returns { msg, slept }
-// -- `slept` tells the caller whether a day (and thus save-worthy progress)
-// actually passed, same as pressing `z` would.
+// ones, process raw materials at any built workshop, sell whatever's left
+// (holding back anything a workshop could still use), plant into empty
+// tilled ground, till bare owned ground, buy more seed when there's nothing
+// left to plant with, spend surplus gold upgrading the farm, and otherwise
+// sleep. Returns { msg, slept } -- `slept` tells the caller whether a day
+// (and thus save-worthy progress) actually passed, same as pressing `z` would.
 export function autoPlayStep(state) {
   const p = state.player;
   const tiles = ownedWorkableTiles(state);
@@ -185,19 +220,29 @@ export function autoPlayStep(state) {
   const toWater = nearestTo(p, thirsty);
   if (toWater) return runAt(state, toWater.x, toWater.y, farming.water);
 
-  if (sellableItems(state).length > 0) {
-    return { msg: sellAllItems(state).msg, slept: false };
+  const processMsg = tryProcess(state);
+  if (processMsg) return { msg: processMsg, slept: false };
+
+  const reservedGoods = reservedForProcessing(state);
+  const sellable = (it) => {
+    const baseId = it.category === 'forage' ? it.key : farming.decodeCropKey(it.key).id;
+    return !reservedGoods.has(`${it.category}:${baseId}`);
+  };
+  if (sellableItems(state).filter(sellable).length > 0) {
+    return { msg: sellAllItems(state, sellable).msg, slept: false };
   }
 
   // Once wealthy enough to build, hold back one open tile per not-yet-built
-  // ranch building -- otherwise the till/plant loop below always claims every
+  // ranch or workshop building -- otherwise the till/plant loop below always claims every
   // last tile for crops first, and a building can never find anywhere to go.
   // Picked in a stable scan order so the same tiles stay reserved tick to
   // tick, and shrinks itself automatically as buildings actually go up.
   let reserveCount = 0;
   if (p.gold > UPGRADE_GOLD_THRESHOLD) {
     const summary = ranchSummary(state);
-    reserveCount = RANCH_BUILDINGS.filter((b) => summary.buildings[b.id] < 0).length;
+    const ws = workshopState(state);
+    reserveCount = RANCH_BUILDINGS.filter((b) => summary.buildings[b.id] < 0).length
+      + WORKSHOPS.filter((w) => !ws[w.id].built).length;
   }
   const buildable = tiles.filter(({ tile }) =>
     (tile.tilled && !tile.crop) || (!tile.tilled && !tile.crop && TILLABLE.includes(tile.base)));

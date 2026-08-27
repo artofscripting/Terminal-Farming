@@ -62,7 +62,7 @@ All of the above (except movement and `P`) act only **on the tile you're standin
 | `M` | Overview map — your position, owned plots, and nearby towns on one compressed screen |
 | `Y` | Workshops — process a built workshop's recipe (as many as you have materials for) |
 | `H` | Walk home — auto-paths to your house (preferring roads) and travels there one tile at a time, sleeping in place if you run out of energy; press `H` again to cancel |
-| `Z` | Auto-play — runs your farm hands-off, one action every 0.1s: harvests ripe crops, waters, plants, tills bare owned ground, sells everything harvested, and buys more seed once it runs out (picking whatever crop profits best and still safely matures before the next frost risk). Keeps a **2000g** reserve at all times — it only spends surplus above that floor, in order: tool upgrades, then ranch buildings, hay + auto-feed, animals to fill them, and — only once every owned field is fully tilled, planted, and watered *and* there's energy to spare — adjacent land. Sleeps when there's truly nothing left to do; press `Z` again to cancel |
+| `Z` | Auto-play — runs your farm hands-off, one action every 0.1s: harvests ripe crops, waters, plants, tills bare owned ground, **processes raw materials at any built workshop**, sells what's left (holding back anything a workshop could still turn into a better good), and buys more seed once it runs out (picking whatever crop profits best and still safely matures before the next frost risk). Keeps a **2000g** reserve at all times — it only spends surplus above that floor, in order: tool upgrades, ranch **and workshop** buildings, hay + auto-feed, animals to fill them, and — only once every owned field is fully tilled, planted, and watered *and* there's energy to spare — adjacent land. Sleeps when there's truly nothing left to do; press `Z` again to cancel |
 | `z` | Sleep (end day, autosave) |
 | `v` / `F5` | Save menu |
 | `F9` | Load menu |
@@ -300,6 +300,8 @@ Turn raw materials into higher-value goods. Buy a workshop (each needs a free ti
 | Cloth Goods Maker `L` | (shared) | Sack ★ | 3 Cloth + 1 Plank | 2 Sack |
 
 **★ Multi-source bonus:** a recipe that combines materials from more than one source (Furniture, Sack) is guaranteed at least ★ quality, with a further chance at ★★ — plain single-ingredient recipes only have the normal chance of any star at all. Quality affects sell price the same way it does for crops (★ +25%, ★★ +50%).
+
+**Auto-play (`Z`)** processes materials at any built workshop automatically, and never auto-sells raw materials or intermediates a built workshop still needs — only finished goods (and anything with nowhere left to go) get sold off.
 
 ---
 

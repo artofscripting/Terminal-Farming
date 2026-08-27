@@ -218,8 +218,10 @@ export function sellCrop(state, cropKey, qty = 1) {
 }
 
 // Sell every sellable stack at once (crops + forage + goods + dishes).
-export function sellAllItems(state) {
-  const items = sellableItems(state);
+// `filter` lets a caller hold back specific stacks (e.g. auto-play reserving
+// processing inputs) -- defaults to selling everything, same as always.
+export function sellAllItems(state, filter = () => true) {
+  const items = sellableItems(state).filter(filter);
   if (items.length === 0) return { ok: false, msg: 'Nothing to sell.' };
   const goldBefore = state.player.gold;
   let sold = 0;
