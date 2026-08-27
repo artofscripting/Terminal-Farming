@@ -1,0 +1,28 @@
+{
+  "name": "terminal-harvest",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "A terminal-style farming RPG with a procedurally chunk-generated world.",
+  "bin": {
+    "terminal-harvest": "src/main.js"
+  },
+  "scripts": {
+    "start": "node src/main.js",
+    "test": "node --test",
+    "dev": "vite",
+    "build:web": "vite build",
+    "build:single": "vite build && node scripts/buildSingleFile.js",
+    "preview": "vite preview"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@xterm/addon-fit": "^0.10.0",
+    "@xterm/xterm": "^5.5.0"
+  },
+  "devDependencies": {
+    "vite": "^8.2.2"
+  }
+}

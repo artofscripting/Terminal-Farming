@@ -1,0 +1,10 @@
+node_modules/
+saves/
+dist/
+*.log
+
+# Generated single-file export (npm run build:single) -- regenerable, not source.
+TerminalHarvest.html
+
+# Unused local scaffold folder, not part of this project.
+/Terminal Farming/

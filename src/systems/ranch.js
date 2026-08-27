@@ -1,0 +1,148 @@
+import { ANIMALS, RANCH_BUILDINGS, HAY_COST, animalDef, ranchBuildingDef } from '../content/animals.js';
+import { add } from './inventory.js';
+import { qualityKey } from './farming.js';
+import { plotTiles } from '../world/plots.js';
+import { gainXp, husbandryQualityBonus, rollQualityBonus } from './skills.js';
+
+// Lazily create the ranch state container. `buildings` is keyed by building
+// id, so a new entry in content/animals.js's RANCH_BUILDINGS needs no other
+// state-shape changes here -- it's backfilled on first access.
+export function ranchState(state) {
+  if (!state.ranch) state.ranch = { hay: 0, autoFeed: false, buildings: {} };
+  if (!state.ranch.buildings) state.ranch.buildings = {};
+  for (const b of RANCH_BUILDINGS) {
+    if (!state.ranch.buildings[b.id]) state.ranch.buildings[b.id] = { built: false, tile: null, animals: [] };
+  }
+  return state.ranch;
+}
+
+function findFreeOwnedTile(state) {
+  for (const plotId of state.ownedPlots) {
+    for (const { x, y } of plotTiles(plotId)) {
+      const t = state.world.getTile(x, y);
+      const onPlayer = state.player.x === x && state.player.y === y;
+      if (!t.building && !t.crop && !onPlayer && ['grass', 'field', 'sand'].includes(t.base)) {
+        return { x, y };
+      }
+    }
+  }
+  return null;
+}
+
+function structFor(state, buildingId) {
+  return ranchState(state).buildings[buildingId];
+}
+
+// Buy a coop or barn: stamps its glyph on a free owned tile.
+export function buyRanchBuilding(state, buildingId) {
+  const def = ranchBuildingDef(buildingId);
+  if (!def) return { ok: false, msg: 'Unknown building.' };
+  const struct = structFor(state, buildingId);
+  if (struct.built) return { ok: false, msg: `You already have a ${def.name}.` };
+  if (state.player.gold < def.cost) return { ok: false, msg: `Need ${def.cost}g.` };
+  const spot = findFreeOwnedTile(state);
+  if (!spot) return { ok: false, msg: 'No free owned tile to build on.' };
+  state.player.gold -= def.cost;
+  const tile = state.world.getTile(spot.x, spot.y);
+  tile.building = buildingId;
+  tile.tilled = false;
+  tile.crop = null;
+  state.world.touch(spot.x, spot.y);
+  struct.built = true;
+  struct.tile = { x: spot.x, y: spot.y };
+  return { ok: true, msg: `Built a ${def.name} (${def.glyph}) for ${def.cost}g.` };
+}
+
+// Buy an animal into its housing structure (if a slot is free).
+export function buyAnimal(state, animalId) {
+  const def = animalDef(animalId);
+  if (!def) return { ok: false, msg: 'Unknown animal.' };
+  const building = ranchBuildingDef(def.building);
+  const struct = structFor(state, def.building);
+  if (!struct.built) return { ok: false, msg: `Build a ${building.name} first.` };
+  if (struct.animals.length >= building.slots) return { ok: false, msg: `${building.name} is full.` };
+  if (state.player.gold < def.cost) return { ok: false, msg: `Need ${def.cost}g.` };
+  state.player.gold -= def.cost;
+  struct.animals.push({ type: animalId, fed: false, careStreak: 0 });
+  return { ok: true, msg: `Bought a ${def.name} (-${def.cost}g).` };
+}
+
+export function buyHay(state, qty = 1) {
+  const r = ranchState(state);
+  const cost = HAY_COST * qty;
+  if (state.player.gold < cost) return { ok: false, msg: `Need ${cost}g.` };
+  state.player.gold -= cost;
+  r.hay += qty;
+  return { ok: true, msg: `Bought ${qty} hay (-${cost}g). Hay: ${r.hay}.` };
+}
+
+function eachAnimal(state) {
+  const r = ranchState(state);
+  return Object.values(r.buildings).flatMap((b) => b.animals);
+}
+
+// Feed all animals now (consumes hay). Returns a status message.
+export function feedAll(state) {
+  const r = ranchState(state);
+  let fed = 0;
+  for (const animal of eachAnimal(state)) {
+    if (animal.fed) continue;
+    const def = animalDef(animal.type);
+    if (r.hay >= def.feedHay) {
+      r.hay -= def.feedHay;
+      animal.fed = true;
+      fed += 1;
+    }
+  }
+  if (fed === 0) return eachAnimal(state).length ? 'No hay to feed (or all fed).' : 'No animals to feed.';
+  return `Fed ${fed} animal${fed === 1 ? '' : 's'}. Hay left: ${r.hay}.`;
+}
+
+export function toggleAutoFeed(state) {
+  const r = ranchState(state);
+  r.autoFeed = !r.autoFeed;
+  return `Auto-feed ${r.autoFeed ? 'ON' : 'OFF'}.`;
+}
+
+function careQuality(streak) {
+  if (streak >= 10) return 2;
+  if (streak >= 5) return 1;
+  return 0;
+}
+
+// Overnight: auto-feed if enabled, produce goods from fed animals, update streaks.
+export function ranchOvernight(state) {
+  const r = ranchState(state);
+  const bonusChance = husbandryQualityBonus(state);
+  let produced = 0;
+  for (const animal of eachAnimal(state)) {
+    const def = animalDef(animal.type);
+    if (!animal.fed && r.autoFeed && r.hay >= def.feedHay) {
+      r.hay -= def.feedHay;
+      animal.fed = true;
+    }
+    if (animal.fed) {
+      animal.careStreak += 1;
+      const quality = rollQualityBonus(careQuality(animal.careStreak), bonusChance);
+      add(state.player.inventory, 'goods', qualityKey(def.product, quality), 1);
+      gainXp(state, 'husbandry', 2);
+      produced += 1;
+    } else {
+      animal.careStreak = 0;
+    }
+    animal.fed = false; // reset for the new day
+  }
+  return produced;
+}
+
+export function ranchSummary(state) {
+  const r = ranchState(state);
+  const buildings = {};
+  for (const b of RANCH_BUILDINGS) {
+    const struct = r.buildings[b.id];
+    buildings[b.id] = struct.built ? struct.animals.length : -1;
+  }
+  return { hay: r.hay, autoFeed: r.autoFeed, buildings };
+}
+
+export { ANIMALS, RANCH_BUILDINGS };
