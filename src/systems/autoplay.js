@@ -16,6 +16,9 @@ import {
 } from './ranch.js';
 import { buyWorkshop, workshopState, maxRuns, process as runWorkshopRecipe } from './workshops.js';
 import { nextExpansionPlot, expandFarm, expandPrice } from './plotmarket.js';
+import {
+  installIrrigationPlot, buyWell, hasNearbyWater, IRRIGATION_COST, IRRIGATION_RADIUS, WELL_COST,
+} from './irrigation.js';
 import * as farming from './farming.js';
 
 const SHOULDER_DAYS = 5; // must match calendar.js's frost shoulder window
@@ -115,6 +118,52 @@ function runAt(state, x, y, action) {
   return /tired/i.test(msg) ? { msg: sleep(state), slept: true } : { msg, slept: false };
 }
 
+// Irrigate the first owned plot that still has eligible ground and fits the
+// gold floor -- installIrrigationPlot() charges IRRIGATION_COST per tile, so
+// the cost is worked out the same way it does internally before committing.
+function tryIrrigate(state, affordable) {
+  for (const plotId of state.ownedPlots) {
+    let cost = 0;
+    let firstTile = null;
+    for (const { x, y } of plotTiles(plotId)) {
+      const tile = state.world.getTile(x, y);
+      if (!tile.building && !tile.irrigation) {
+        cost += IRRIGATION_COST;
+        if (!firstTile) firstTile = { x, y };
+      }
+    }
+    if (!firstTile || !affordable(cost)) continue;
+    state.player.x = firstTile.x;
+    state.player.y = firstTile.y;
+    return installIrrigationPlot(state);
+  }
+  return null;
+}
+
+// Place a well near the first irrigated tile that lacks a water source in
+// range, so its (and ideally its neighbors') irrigation actually pays off --
+// irrigation alone does nothing overnight without a source within
+// IRRIGATION_RADIUS. Never sits the well on already-irrigated ground (that
+// would just trade one irrigated tile for the well that's meant to serve it).
+function tryPlaceWell(state, tiles, affordable) {
+  if (!affordable(WELL_COST)) return null;
+  let target = null;
+  for (const t of tiles) {
+    if (t.tile.irrigation && !hasNearbyWater(state.world, t.x, t.y)) { target = t; break; }
+  }
+  if (!target) return null;
+
+  const r2 = IRRIGATION_RADIUS * IRRIGATION_RADIUS;
+  const spot = nearestTo(target, tiles.filter(({ x, y, tile }) =>
+    !tile.building && !tile.crop && !tile.irrigation && TILLABLE.includes(tile.base) &&
+    (x - target.x) ** 2 + (y - target.y) ** 2 <= r2));
+  if (!spot) return null;
+
+  state.player.x = spot.x;
+  state.player.y = spot.y;
+  return buyWell(state);
+}
+
 // Once there's over UPGRADE_GOLD_THRESHOLD gold and no more urgent farm work,
 // spend the surplus in order: tool tiers, ranch buildings, hay/auto-feed,
 // animals to fill them, and only once all of that is maxed out, adjacent
@@ -136,6 +185,18 @@ function tryFarmUpgrade(state, tiles) {
       if (res.ok) return res.msg;
     }
   }
+
+  // Irrigation pays for itself in saved watering energy forever after, so it
+  // comes right after tools -- but covering what's already irrigated comes
+  // FIRST, ahead of irrigating more: with land expansion continually adding
+  // fresh ground to irrigate, checking irrigation before wells would let it
+  // win the ladder's one action every tick forever, and a well never gets a
+  // turn. Well placement doesn't have that problem (it stops needing a turn
+  // once coverage is complete), so it goes first.
+  const wellMsg = tryPlaceWell(state, tiles, affordable);
+  if (wellMsg) return wellMsg;
+  const irrigateMsg = tryIrrigate(state, affordable);
+  if (irrigateMsg) return irrigateMsg;
 
   const summary = ranchSummary(state);
   for (const b of RANCH_BUILDINGS) {
@@ -233,10 +294,13 @@ export function autoPlayStep(state) {
   }
 
   // Once wealthy enough to build, hold back one open tile per not-yet-built
-  // ranch or workshop building -- otherwise the till/plant loop below always claims every
-  // last tile for crops first, and a building can never find anywhere to go.
-  // Picked in a stable scan order so the same tiles stay reserved tick to
-  // tick, and shrinks itself automatically as buildings actually go up.
+  // ranch or workshop building -- otherwise the till/plant loop below always
+  // claims every last tile for crops first, and a building can never find
+  // anywhere to go. Picked in a stable scan order so the same tiles stay
+  // reserved tick to tick, and shrinks itself automatically as buildings
+  // actually go up.
+  const buildable = tiles.filter(({ tile }) =>
+    (tile.tilled && !tile.crop) || (!tile.tilled && !tile.crop && TILLABLE.includes(tile.base)));
   let reserveCount = 0;
   if (p.gold > UPGRADE_GOLD_THRESHOLD) {
     const summary = ranchSummary(state);
@@ -244,9 +308,21 @@ export function autoPlayStep(state) {
     reserveCount = RANCH_BUILDINGS.filter((b) => summary.buildings[b.id] < 0).length
       + WORKSHOPS.filter((w) => !ws[w.id].built).length;
   }
-  const buildable = tiles.filter(({ tile }) =>
-    (tile.tilled && !tile.crop) || (!tile.tilled && !tile.crop && TILLABLE.includes(tile.base)));
   const reserved = new Set(buildable.slice(0, reserveCount).map(({ x, y }) => `${x},${y}`));
+
+  // Also hold back one buildable tile actually within well range of an
+  // uncovered irrigated tile -- a well needs somewhere to go too, and unlike
+  // the count above, it has to be geometrically close to the spot it's
+  // meant to cover, not just any free tile anywhere on the farm.
+  if (p.gold > UPGRADE_GOLD_THRESHOLD) {
+    const uncovered = tiles.find((t) => t.tile.irrigation && !hasNearbyWater(state.world, t.x, t.y));
+    if (uncovered) {
+      const r2 = IRRIGATION_RADIUS * IRRIGATION_RADIUS;
+      const spot = buildable.find(({ x, y, tile }) =>
+        !tile.irrigation && (x - uncovered.x) ** 2 + (y - uncovered.y) ** 2 <= r2);
+      if (spot) reserved.add(`${spot.x},${spot.y}`);
+    }
+  }
   const notReserved = (t) => !reserved.has(`${t.x},${t.y}`);
 
   const seedId = p.selectedSeed;
