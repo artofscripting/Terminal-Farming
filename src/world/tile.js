@@ -23,6 +23,13 @@ export const BUILDINGS = {
   well:      { glyph: 'O', color: '#5fa0d0', walk: false },
   gate:      { glyph: '=', color: '#caa76a', walk: true },
   fence:     { glyph: '#', color: '#8a6a3a', walk: false },
+  // Processing buildings (content/workshops.js).
+  sawmill:     { glyph: 'M', color: '#8a5a2a', walk: false },
+  carpenter:   { glyph: 'W', color: '#a06a30', walk: false },
+  cotton_gin:  { glyph: 'I', color: '#d0d0c0', walk: false },
+  spinner:     { glyph: 'S', color: '#c0a0d0', walk: false },
+  weaver:      { glyph: 'E', color: '#9060b0', walk: false },
+  cloth_maker: { glyph: 'L', color: '#6040a0', walk: false },
 };
 
 // Create a fresh, empty tile of a given base terrain.

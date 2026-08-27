@@ -6,6 +6,8 @@ import { canCook, listRecipes, dishesInInventory } from '../systems/kitchen.js';
 import { recipeDef } from '../content/recipes.js';
 import { ranchSummary, nextRanchLevel } from '../systems/ranch.js';
 import { RANCH_BUILDINGS, ANIMALS, HAY_COST, ranchBuildingDef, buildingLevelDef } from '../content/animals.js';
+import { workshopSummary, maxRuns } from '../systems/workshops.js';
+import { WORKSHOPS, workshopDef, allRecipes } from '../content/workshops.js';
 import { laborSummary, ROLES } from '../systems/labor.js';
 import { npcDef } from '../content/npcs.js';
 import { heartsOf, availableFor, activeFor, canTurnIn, isBestFriend } from '../systems/quests.js';
@@ -69,6 +71,7 @@ export function renderShopRoot(renderer, state) {
   row(renderer, 10, '8', 'Ranch (coop, barn, animals, hay)');
   const kitchen = state.hasKitchen ? 'Kitchen (owned)' : 'Buy kitchen  (250g)';
   row(renderer, 11, '9', kitchen, state.hasKitchen ? DIM : TEXT);
+  row(renderer, 12, '0', 'Workshops (sawmill, carpenter, cotton gin, spinner, weaver, cloth maker)');
 
   const deal = dailyDeal(state);
   if (deal) {
@@ -201,6 +204,44 @@ export function renderRanch(renderer, state) {
   row(renderer, y++, 'f', 'Feed all animals now');
   row(renderer, y++, 'a', 'Toggle auto-feed');
   renderer.text(2, renderer.height - 2, 'Fed animals produce eggs/milk/wool/honey overnight.', DIM, PANEL_BG);
+}
+
+// Workshop shop submenu: buy any of the 6 processing buildings.
+// Returns the building ids in listed order.
+export function renderWorkshopBuy(renderer, state) {
+  panel(renderer, `Workshops — ${state.player.gold}g`);
+  const built = workshopSummary(state);
+  WORKSHOPS.forEach((w, i) => {
+    if (i >= KEYS.length) return;
+    const isBuilt = built[w.id];
+    row(renderer, 3 + i, KEYS[i], `${w.name.padEnd(20)} ${w.cost}g` + (isBuilt ? '  (built)' : ''), isBuilt ? DIM : TEXT);
+  });
+  renderer.text(2, renderer.height - 2, 'Press a key to build.', DIM, PANEL_BG);
+  return WORKSHOPS.map((w) => w.id);
+}
+
+// Workshops processing screen (Y): run any recipe from an already-built
+// workshop, crafting as many as materials allow in one go. Returns
+// [{workshopId, recipeId}] so the handler can dispatch by key index.
+export function renderWorkshops(renderer, state) {
+  panel(renderer, 'Workshops');
+  const built = workshopSummary(state);
+  const recipes = allRecipes().filter((r) => built[r.workshopId]);
+  if (recipes.length === 0) {
+    renderer.text(3, 3, 'No workshops built yet — buy one in the shop (0).', DIM, PANEL_BG);
+    renderer.text(2, renderer.height - 2, 'q/Esc back', DIM, PANEL_BG);
+    return [];
+  }
+  recipes.forEach((r, i) => {
+    if (i >= KEYS.length) return;
+    const runs = maxRuns(state, r);
+    const need = r.inputs.map((inp) => `${inp.qty}x ${itemName(inp.cat, inp.id)}`).join(' + ');
+    const bonus = r.inputs.length > 1 ? ' ★multi-source' : '';
+    const line = `${r.name.padEnd(12)} [${workshopDef(r.workshopId).name}]  ${need}${bonus}  (x${runs} now)`;
+    row(renderer, 3 + i, KEYS[i], line, runs > 0 ? TEXT : DIM);
+  });
+  renderer.text(2, renderer.height - 2, 'Press a key to process as many as you have materials for.', DIM, PANEL_BG);
+  return recipes.map((r) => ({ workshopId: r.workshopId, recipeId: r.id }));
 }
 
 // Labor board: hire/fire workers, reassign zones, upgrade bunkhouse.
@@ -584,6 +625,7 @@ const HELP_PAGES = [
     'm mount  n implement  y auto  , zone   (tractor)',
     'o  Shop        i  Inventory   z  Sleep (end day)',
     'K  Skills      S  Lifetime stats   M  Overview map',
+    'Y  Workshops (process logs/planks/cotton/thread/cloth into goods)',
     'H  Walk home (auto-path, sleeps as needed; press again to cancel)',
     'Z  Auto-play: till/plant/water/harvest/sell/buy seed on its own; past',
     '   2000g it upgrades tools, buildings, animals, then land (again = off)',

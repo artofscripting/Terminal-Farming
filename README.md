@@ -60,6 +60,7 @@ All of the above (except movement and `P`) act only **on the tile you're standin
 | `K` | Skills |
 | `S` | Lifetime stats & achievements (gold earned, crops harvested, days played, ...) |
 | `M` | Overview map — your position, owned plots, and nearby towns on one compressed screen |
+| `Y` | Workshops — process a built workshop's recipe (as many as you have materials for) |
 | `H` | Walk home — auto-paths to your house (preferring roads) and travels there one tile at a time, sleeping in place if you run out of energy; press `H` again to cancel |
 | `Z` | Auto-play — runs your farm hands-off, one action every 0.1s: harvests ripe crops, waters, plants, tills bare owned ground, sells everything harvested, and buys more seed once it runs out (picking whatever crop profits best and still safely matures before the next frost risk). Keeps a **2000g** reserve at all times — it only spends surplus above that floor, in order: tool upgrades, then ranch buildings, hay + auto-feed, animals to fill them, and — only once every owned field is fully tilled, planted, and watered *and* there's energy to spare — adjacent land. Sleeps when there's truly nothing left to do; press `Z` again to cancel |
 | `z` | Sleep (end day, autosave) |
@@ -105,6 +106,12 @@ All of the above (except movement and `P`) act only **on the tile you're standin
 | `V` | Hive |
 | `K` | Kitchen |
 | `O` | Well |
+| `M` | Sawmill |
+| `W` | Carpenter |
+| `I` | Cotton Gin |
+| `S` | Spinner |
+| `E` | Weaver |
+| `L` | Cloth Goods Maker |
 
 A few glyphs do double duty (e.g. `~` is both water and tilled soil, `O` is both the well and ripe pumpkin). In-game, press **`?`** then the glyph's key to see every meaning it can have, both as a control and on the map.
 
@@ -166,6 +173,7 @@ Each day you walk the farm, spend energy on work, then **`z` sleep**. Overnight:
 | `7` | Fuel can (+20 fuel) |
 | `8` | Ranch submenu — coop, barn, chickens, cows, hay |
 | `9` | Buy kitchen (unlock cooking) |
+| `0` | Workshops submenu — buy sawmill, carpenter, cotton gin, spinner, weaver, cloth goods maker |
 | `q` | Leave |
 
 **Traveling merchant:** roughly 1 in 10 days, the shop root screen shows a `D` line offering one random seed or fertilizer at 40% off, good for that day only.
@@ -273,6 +281,25 @@ Cook recipes, then sell dishes or **eat** them for energy.
 | Celebration cake | wheat + egg + milk + jam | 220g | +35E |
 
 **Kitchen tips:** `m` then a recipe cooks **×5**. Toggle eat mode to restore energy from cooked food.
+
+---
+
+## Workshops (`Y`, buildings from shop `0`)
+
+Turn raw materials into higher-value goods. Buy a workshop (each needs a free tile on owned land, like a ranch building), then press **`Y`** to process any of its recipes — one keypress makes as many as your materials allow. Two production chains:
+
+| Workshop | Cost | Recipe | Needs | Makes |
+|----------|------|--------|-------|-------|
+| Sawmill `M` | 500g | Plank | 2 Logs (Oak Tree crop) | 3 Plank |
+| Carpenter `W` | 800g | Toolbox | 4 Plank | 1 Toolbox |
+| Carpenter `W` | (shared) | Furniture ★ | 6 Plank + 2 Cloth | 1 Furniture |
+| Cotton Gin `I` | 400g | Ginned Cotton | 3 Cotton (crop) | 2 Ginned Cotton |
+| Spinner `S` | 500g | Thread | 2 Ginned Cotton | 2 Thread |
+| Weaver `E` | 600g | Cloth | 3 Thread | 2 Cloth |
+| Cloth Goods Maker `L` | 700g | Shirt | 2 Cloth | 1 Shirt |
+| Cloth Goods Maker `L` | (shared) | Sack ★ | 3 Cloth + 1 Plank | 2 Sack |
+
+**★ Multi-source bonus:** a recipe that combines materials from more than one source (Furniture, Sack) is guaranteed at least ★ quality, with a further chance at ★★ — plain single-ingredient recipes only have the normal chance of any star at all. Quality affects sell price the same way it does for crops (★ +25%, ★★ +50%).
 
 ---
 

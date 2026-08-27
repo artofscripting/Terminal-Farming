@@ -46,6 +46,7 @@ export const KEY_MEANINGS = {
   M: [['Game', 'Open the overview map (owned plots + nearby towns)'], ['Overview map', 'Close the overview map']],
   H: [['Game', 'Walk home: auto-path and travel there, sleeping as needed (press again to cancel)']],
   Z: [['Game', 'Auto-play: till/plant/water/harvest/sell/buy seed on its own, then spends surplus gold past 2000 on tools, buildings, animals, and land (press again to cancel)']],
+  Y: [['Game', 'Open Workshops: process any built workshop’s recipe'], ['Workshops', 'Close Workshops']],
   m: [['Game', 'Mount / dismount the tractor at the garage'], ['Kitchen', 'Toggle x1 / x5 cook batch size']],
   n: [['Game', 'Cycle the tractor\u2019s overnight auto-route implement'], ['Help (browsing pages)', 'Next help page'], ['Pause / confirm dialogs', 'Cancel / No']],
   y: [['Game', 'Toggle the tractor\u2019s overnight auto-route'], ['Pause / confirm dialogs', 'Confirm / Yes']],
@@ -71,6 +72,7 @@ export const KEY_MEANINGS = {
   '7': [['Shop', 'Buy fuel can']],
   '8': [['Shop', 'Open the ranch shop']],
   '9': [['Shop', 'Buy kitchen']],
+  '0': [['Shop', 'Open the Workshops submenu (buy sawmill, carpenter, cotton gin, spinner, weaver, cloth maker)']],
   D: [['Shop', "Buy today's traveling-merchant deal (if one is available)"]],
 };
 

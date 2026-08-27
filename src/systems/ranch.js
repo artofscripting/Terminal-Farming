@@ -1,7 +1,7 @@
 import { ANIMALS, RANCH_BUILDINGS, HAY_COST, animalDef, ranchBuildingDef, buildingLevelDef } from '../content/animals.js';
 import { add } from './inventory.js';
 import { qualityKey } from './farming.js';
-import { plotTiles } from '../world/plots.js';
+import { findFreeOwnedTile } from './plotmarket.js';
 import { gainXp, husbandryQualityBonus, rollQualityBonus } from './skills.js';
 
 // Lazily create the ranch state container. `buildings` is keyed by building
@@ -20,19 +20,6 @@ export function ranchState(state) {
 // Current slot capacity for a built structure, per its level.
 function slotsFor(buildingDef, struct) {
   return buildingLevelDef(buildingDef, struct.level).slots;
-}
-
-function findFreeOwnedTile(state) {
-  for (const plotId of state.ownedPlots) {
-    for (const { x, y } of plotTiles(plotId)) {
-      const t = state.world.getTile(x, y);
-      const onPlayer = state.player.x === x && state.player.y === y;
-      if (!t.building && !t.crop && !onPlayer && ['grass', 'field', 'sand'].includes(t.base)) {
-        return { x, y };
-      }
-    }
-  }
-  return null;
 }
 
 function structFor(state, buildingId) {

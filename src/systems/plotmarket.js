@@ -10,6 +10,21 @@ function marlaDiscount(state) {
 // Terrain a plot must be made of to be farmable/ownable.
 const OWNABLE_BASES = new Set(['grass', 'field', 'sand']);
 
+// The first owned, unbuilt, uncropped, unoccupied tile -- shared by every
+// system that stamps a building (ranch.js, workshops.js).
+export function findFreeOwnedTile(state) {
+  for (const plotId of state.ownedPlots) {
+    for (const { x, y } of plotTiles(plotId)) {
+      const t = state.world.getTile(x, y);
+      const onPlayer = state.player.x === x && state.player.y === y;
+      if (!t.building && !t.crop && !onPlayer && OWNABLE_BASES.has(t.base)) {
+        return { x, y };
+      }
+    }
+  }
+  return null;
+}
+
 // Can this individual tile be farmed once its plot is owned?
 export function isFarmable(world, wx, wy) {
   const t = world.getTile(wx, wy);

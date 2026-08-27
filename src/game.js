@@ -15,6 +15,7 @@ import { acceptQuest, turnInQuest } from './systems/quests.js';
 import { giftItem, isInTown } from './systems/town.js';
 import { enterContest, buyBoothSeeds } from './systems/festivals.js';
 import { installIrrigation, installIrrigationPlot, buyWell } from './systems/irrigation.js';
+import { buyWorkshop, process as runWorkshopRecipe } from './systems/workshops.js';
 import { runCommand } from './systems/console.js';
 import { findPath } from './systems/pathfind.js';
 import { autoPlayStep } from './systems/autoplay.js';
@@ -84,6 +85,7 @@ export class Game {
       case 'skills': return this.keySkills(k);
       case 'stats': return this.keyStats(k);
       case 'map': return this.keyMap(k);
+      case 'workshops': return this.keyWorkshops(k);
       case 'save': return this.keySave(k);
       case 'load': return this.keyLoad(k);
       case 'pause': return this.keyPause(k);
@@ -136,6 +138,7 @@ export class Game {
       case 'K': this.mode = 'skills'; break;
       case 'S': this.mode = 'stats'; break;
       case 'M': this.mode = 'map'; break;
+      case 'Y': this.mode = 'workshops'; break;
       case 'H':
         if (this.walkHomePath) this.stopWalkHome('Walk home cancelled.');
         else this.startWalkHome();
@@ -433,6 +436,14 @@ export class Game {
     this.render();
   }
 
+  // ---- Workshops (Y): process any recipe from an already-built workshop ----
+  keyWorkshops(k) {
+    if (k === 'q' || k === 'escape' || k === 'Y') { this.mode = 'game'; this.render(); return; }
+    const item = this.ui.workshopKeys?.[keyIndex(k)];
+    if (item) this.setStatus(runWorkshopRecipe(this.state, item.workshopId, item.recipeId, Infinity).msg);
+    this.render();
+  }
+
   // ---- Save / Load menus ----
   keySave(k) {
     if (k === 'q' || k === 'escape' || k === 'v') { this.mode = 'game'; this.render(); return; }
@@ -496,6 +507,7 @@ export class Game {
       else if (k === '7') this.setStatus(buyFuel(this.state, 1).msg);
       else if (k === '8') this.ui.shopScreen = 'ranch';
       else if (k === '9') this.setStatus(buyKitchen(this.state).msg);
+      else if (k === '0') this.ui.shopScreen = 'workshopBuy';
       else if (k === 'D') this.setStatus(buyDailyDeal(this.state).msg);
     } else if (s === 'seed') {
       const id = this.ui.shopKeys[keyIndex(k)];
@@ -523,6 +535,9 @@ export class Game {
         else if (item.type === 'animal') this.setStatus(buyAnimal(this.state, item.id).msg);
         else if (item.type === 'hay') this.setStatus(buyHay(this.state, item.qty).msg);
       }
+    } else if (s === 'workshopBuy') {
+      const id = this.ui.shopKeys[keyIndex(k)];
+      if (id) this.setStatus(buyWorkshop(this.state, id).msg);
     }
     this.render();
   }
@@ -556,6 +571,7 @@ export class Game {
     if (this.mode === 'skills') { menus.renderSkills(this.renderer, this.state); return this.flush(); }
     if (this.mode === 'stats') { menus.renderStats(this.renderer, this.state); return this.flush(); }
     if (this.mode === 'map') { menus.renderMap(this.renderer, this.state); return this.flush(); }
+    if (this.mode === 'workshops') { this.ui.workshopKeys = menus.renderWorkshops(this.renderer, this.state); return this.flush(); }
     if (this.mode === 'save') { menus.renderSaveMenu(this.renderer, this.state, this.save.slotExists); return this.flush(); }
     if (this.mode === 'load') { menus.renderLoadMenu(this.renderer, this.save.slotExists); return this.flush(); }
     if (this.mode === 'pause') { menus.renderPause(this.renderer, this.ui.pauseConfirm); return this.flush(); }
@@ -572,6 +588,7 @@ export class Game {
     else if (s === 'expand') menus.renderExpand(this.renderer, this.state);
     else if (s === 'ranch') this.ui.shopKeys = menus.renderRanchShop(this.renderer, this.state);
     else if (s === 'fert') this.ui.shopKeys = menus.renderFertBuy(this.renderer, this.state);
+    else if (s === 'workshopBuy') this.ui.shopKeys = menus.renderWorkshopBuy(this.renderer, this.state);
     this.flush();
   }
 
