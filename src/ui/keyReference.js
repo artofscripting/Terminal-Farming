@@ -45,7 +45,7 @@ export const KEY_MEANINGS = {
   S: [['Game', 'Open the lifetime Stats & Achievements panel'], ['Stats', 'Close the Stats panel']],
   M: [['Game', 'Open the overview map (owned plots + nearby towns)'], ['Overview map', 'Close the overview map']],
   H: [['Game', 'Walk home: auto-path and travel there, sleeping as needed (press again to cancel)']],
-  Z: [['Game', 'Auto-play: till/plant/water/harvest/buy seed on its own, one action at a time (press again to cancel)']],
+  Z: [['Game', 'Auto-play: till/plant/water/harvest/sell/buy seed on its own, then spends surplus gold past 2000 on tools, buildings, animals, and land (press again to cancel)']],
   m: [['Game', 'Mount / dismount the tractor at the garage'], ['Kitchen', 'Toggle x1 / x5 cook batch size']],
   n: [['Game', 'Cycle the tractor\u2019s overnight auto-route implement'], ['Help (browsing pages)', 'Next help page'], ['Pause / confirm dialogs', 'Cancel / No']],
   y: [['Game', 'Toggle the tractor\u2019s overnight auto-route'], ['Pause / confirm dialogs', 'Confirm / Yes']],

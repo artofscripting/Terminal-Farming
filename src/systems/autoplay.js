@@ -1,17 +1,23 @@
 // Auto-play (Z): one farming action every tick, fully autonomous. Each call
 // to autoPlayStep() does exactly one thing -- harvest, water, plant, till,
-// buy seeds, or sleep -- picking whatever is most useful right now.
+// sell, buy seeds, upgrade the farm, or sleep -- picking whatever is most
+// useful right now.
 import { Crops } from '../content/registry.js';
+import { RANCH_BUILDINGS, ANIMALS, HAY_COST } from '../content/animals.js';
 import { plotTiles } from '../world/plots.js';
 import { count } from './inventory.js';
-import { seedPrice, buySeed } from './economy.js';
+import { seedPrice, buySeed, sellableItems, sellAllItems, nextToolTier, upgradeTool } from './economy.js';
 import { meetsCropLevel } from './skills.js';
 import { sleep } from './calendar.js';
 import { DAYS_PER_SEASON } from '../state/gameState.js';
+import { buyRanchBuilding, buyAnimal, buyHay, toggleAutoFeed, ranchSummary } from './ranch.js';
+import { nextExpansionPlot, expandFarm, expandPrice } from './plotmarket.js';
 import * as farming from './farming.js';
 
 const SHOULDER_DAYS = 5; // must match calendar.js's frost shoulder window
 const TILLABLE = ['grass', 'field', 'sand'];
+const UPGRADE_GOLD_THRESHOLD = 2000; // start spending surplus gold on the farm past this
+const HAY_RESERVE = 20; // keep at least this much hay on hand once ranching
 
 // How many of the current season's remaining days are free of frost risk,
 // starting from today. Spring's first days and fall's last days are frost
@@ -74,11 +80,69 @@ function runAt(state, x, y, action) {
   return /tired/i.test(msg) ? { msg: sleep(state), slept: true } : { msg, slept: false };
 }
 
+// Once there's over UPGRADE_GOLD_THRESHOLD gold and no more urgent farm work,
+// spend the surplus in order: tool tiers, ranch buildings, hay/auto-feed,
+// animals to fill them, and only once all of that is maxed out, adjacent
+// land. Skips anything that fails (e.g. a building with no free tile to sit
+// on) rather than getting stuck retrying it forever -- only a purchase that
+// actually succeeds counts as this tick's action.
+function tryFarmUpgrade(state) {
+  const p = state.player;
+  if (p.gold <= UPGRADE_GOLD_THRESHOLD) return null;
+
+  for (const toolId of Object.keys(p.tools)) {
+    const next = nextToolTier(state, toolId);
+    if (next && p.gold >= next.cost) {
+      const res = upgradeTool(state, toolId);
+      if (res.ok) return res.msg;
+    }
+  }
+
+  const summary = ranchSummary(state);
+  for (const b of RANCH_BUILDINGS) {
+    if (summary.buildings[b.id] < 0 && p.gold >= b.cost) {
+      const res = buyRanchBuilding(state, b.id);
+      if (res.ok) return res.msg;
+    }
+  }
+
+  const anyRanchBuilt = RANCH_BUILDINGS.some((b) => summary.buildings[b.id] >= 0);
+  if (anyRanchBuilt) {
+    if (!summary.autoFeed) return toggleAutoFeed(state);
+    if (summary.hay < HAY_RESERVE) {
+      const qty = Math.min(10, Math.floor(p.gold / HAY_COST));
+      if (qty > 0) {
+        const res = buyHay(state, qty);
+        if (res.ok) return res.msg;
+      }
+    }
+  }
+
+  for (const a of ANIMALS) {
+    const building = RANCH_BUILDINGS.find((b) => b.id === a.building);
+    const housed = summary.buildings[a.building];
+    if (housed >= 0 && housed < building.slots && p.gold >= a.cost) {
+      const res = buyAnimal(state, a.id);
+      if (res.ok) return res.msg;
+    }
+  }
+
+  // Tools maxed, every building built and fully animal-stocked -- fully
+  // upgraded, so grow the farm itself.
+  if (nextExpansionPlot(state) && p.gold >= expandPrice(state)) {
+    const res = expandFarm(state);
+    if (res.ok) return res.msg;
+  }
+
+  return null;
+}
+
 // One discrete auto-play action. Priority: harvest ripe crops, water thirsty
-// ones, plant into empty tilled ground, till bare owned ground, buy more
-// seed when there's nothing left to plant with, and otherwise sleep. Returns
-// { msg, slept } -- `slept` tells the caller whether a day (and thus save-
-// worthy progress) actually passed, same as pressing `z` would.
+// ones, sell whatever's in the bag, plant into empty tilled ground, till bare
+// owned ground, buy more seed when there's nothing left to plant with, spend
+// surplus gold upgrading the farm, and otherwise sleep. Returns { msg, slept }
+// -- `slept` tells the caller whether a day (and thus save-worthy progress)
+// actually passed, same as pressing `z` would.
 export function autoPlayStep(state) {
   const p = state.player;
   const tiles = ownedWorkableTiles(state);
@@ -94,6 +158,25 @@ export function autoPlayStep(state) {
   const toWater = nearestTo(p, thirsty);
   if (toWater) return runAt(state, toWater.x, toWater.y, farming.water);
 
+  if (sellableItems(state).length > 0) {
+    return { msg: sellAllItems(state).msg, slept: false };
+  }
+
+  // Once wealthy enough to build, hold back one open tile per not-yet-built
+  // ranch building -- otherwise the till/plant loop below always claims every
+  // last tile for crops first, and a building can never find anywhere to go.
+  // Picked in a stable scan order so the same tiles stay reserved tick to
+  // tick, and shrinks itself automatically as buildings actually go up.
+  let reserveCount = 0;
+  if (p.gold > UPGRADE_GOLD_THRESHOLD) {
+    const summary = ranchSummary(state);
+    reserveCount = RANCH_BUILDINGS.filter((b) => summary.buildings[b.id] < 0).length;
+  }
+  const buildable = tiles.filter(({ tile }) =>
+    (tile.tilled && !tile.crop) || (!tile.tilled && !tile.crop && TILLABLE.includes(tile.base)));
+  const reserved = new Set(buildable.slice(0, reserveCount).map(({ x, y }) => `${x},${y}`));
+  const notReserved = (t) => !reserved.has(`${t.x},${t.y}`);
+
   const seedId = p.selectedSeed;
   const seedDef = seedId && Crops.get(seedId);
   const canPlantSelected = Boolean(seedDef) &&
@@ -101,19 +184,18 @@ export function autoPlayStep(state) {
     meetsCropLevel(state, seedDef) &&
     count(p.inventory, 'seeds', seedId) > 0;
   if (canPlantSelected) {
-    const emptyTilled = tiles.filter(({ tile }) => tile.tilled && !tile.crop);
+    const emptyTilled = tiles.filter(({ tile }) => tile.tilled && !tile.crop).filter(notReserved);
     const toPlant = nearestTo(p, emptyTilled);
     if (toPlant) return runAt(state, toPlant.x, toPlant.y, farming.plant);
   }
 
-  const untilled = tiles.filter(({ tile }) => !tile.tilled && !tile.crop && TILLABLE.includes(tile.base));
+  const untilled = tiles.filter(({ tile }) => !tile.tilled && !tile.crop && TILLABLE.includes(tile.base)).filter(notReserved);
   const toTill = nearestTo(p, untilled);
   if (toTill) return runAt(state, toTill.x, toTill.y, farming.till);
 
   // Nothing left to work with hand tools -- buy seed for whatever open
   // ground remains, if a safe crop and the gold for it are both available.
-  const plantable = tiles.filter(({ tile }) =>
-    (tile.tilled && !tile.crop) || (!tile.tilled && !tile.crop && TILLABLE.includes(tile.base)));
+  const plantable = buildable.filter(notReserved);
   if (plantable.length > 0) {
     const best = optimalSeed(state);
     if (best) {
@@ -125,6 +207,10 @@ export function autoPlayStep(state) {
       }
     }
   }
+
+  // Nothing left to farm or buy seed for -- spend surplus gold upgrading.
+  const upgradeMsg = tryFarmUpgrade(state);
+  if (upgradeMsg) return { msg: upgradeMsg, slept: false };
 
   // Fully worked and nothing productive to buy -- advance to the next day.
   return { msg: sleep(state), slept: true };
