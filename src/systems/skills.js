@@ -18,12 +18,13 @@ export function ensureSkills(player) {
 }
 
 const XP_RATE = 1 / 3; // all skill XP gains 3x slower
+const XP_GAIN_MULT = 1 / 20; // balance pass: further 20x reduction on top of XP_RATE
 
 export function gainXp(state, skill, amount) {
   ensureSkills(state.player);
   const s = state.player.skills[skill];
   if (!s) return;
-  s.xp += amount * XP_RATE;
+  s.xp += amount * XP_RATE * XP_GAIN_MULT;
   while (s.xp >= XP_PER_LEVEL) {
     s.xp -= XP_PER_LEVEL;
     s.level += 1;

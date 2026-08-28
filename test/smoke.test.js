@@ -139,10 +139,10 @@ test('kitchen: buy, cook (with quality carry + dish ingredient), and eat', () =>
   assert.match(cook(state, 'omelette', 1), /Cooked 1x Omelette/);
   assert.ok(state.player.inventory.dishes['omelette#2'] === 1, 'dish keeps ★★ quality');
 
-  // Eat restores energy up to max.
+  // Eat restores energy up to max (recipe.eat scaled down 10x -- balance pass).
   state.player.energy = 5;
-  assert.match(eat(state, 'omelette#2'), /\+14 energy/);
-  assert.strictEqual(state.player.energy, 19);
+  assert.match(eat(state, 'omelette#2'), /\+1\.4 energy/);
+  assert.strictEqual(state.player.energy, 6.4);
 });
 
 test('ranch: build coop, buy chicken, auto-feed produces eggs with care quality', () => {
