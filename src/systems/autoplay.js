@@ -220,11 +220,17 @@ function stepToward(state, tx, ty) {
   return `Walking (${path.length} tile${path.length === 1 ? '' : 's'} to go)...`;
 }
 
+const CARDINAL_OFFSETS = [[0, -1], [0, 1], [-1, 0], [1, 0]];
+const ALL_8_OFFSETS = [...CARDINAL_OFFSETS, [-1, -1], [1, -1], [-1, 1], [1, 1]];
+
 // First walkable tile next to (bx,by) -- for approaching a building (garage,
-// seed plant) rather than trying to path onto it; buildings are never
-// walkable themselves, so pathing straight at one always fails.
-function walkableNeighbor(world, bx, by) {
-  for (const [dx, dy] of [[0, -1], [0, 1], [-1, 0], [1, 0], [-1, -1], [1, -1], [-1, 1], [1, 1]]) {
+// seed plant) or a tree rather than trying to path onto it; none of those
+// are walkable themselves, so pathing straight at one always fails. Defaults
+// to all 8 neighbors; pass CARDINAL_OFFSETS for a target (like a tree) that
+// only checks the 4 orthogonal neighbors for what's next to it, so the spot
+// picked here is guaranteed to be one the target action will actually see.
+function walkableNeighbor(world, bx, by, offsets = ALL_8_OFFSETS) {
+  for (const [dx, dy] of offsets) {
     const x = bx + dx;
     const y = by + dy;
     if (world.isWalkable(x, y)) return { x, y };
@@ -257,6 +263,23 @@ function tryMountTractor(state) {
   const walkMsg = stepToward(state, spot.x, spot.y);
   if (walkMsg) return walkMsg;
   return toggleMount(state);
+}
+
+// Chop the first owned tree so its tile can join the farmable field --
+// trees never expire on their own (ownership doesn't clear them, see
+// plotmarket.js), so reclaiming that ground is deliberate work, same as
+// tilling it once it's grass. Walks to a tile cardinally next to the tree
+// (CARDINAL_OFFSETS, matching exactly what chopTree() itself checks --
+// an 8-directional spot could land diagonally, where chopTree would find
+// no tree at all), then chops.
+function tryChopTree(state, tiles) {
+  const target = tiles.find((t) => t.tile.base === 'tree');
+  if (!target) return null;
+  const spot = walkableNeighbor(state.world, target.x, target.y, CARDINAL_OFFSETS);
+  if (!spot) return null;
+  const walkMsg = stepToward(state, spot.x, spot.y);
+  if (walkMsg) return walkMsg;
+  return farming.chopTree(state);
 }
 
 // Irrigate the first owned plot that still has eligible ground and fits the
@@ -429,8 +452,10 @@ function tryFarmUpgrade(state, tiles) {
 // convert some harvested crop into seed at an owned seed plant if that
 // crop's seed stock has run low, sell whatever's left (holding back
 // anything a workshop could still use), plant into empty tilled ground,
-// till bare owned ground, buy more seed when there's nothing left to plant
-// with, spend surplus gold upgrading the farm, and otherwise sleep. Returns
+// till bare owned ground, chop down an owned tree to reclaim more ground
+// once there's nothing left to till, buy more seed when there's nothing
+// left to plant with, spend surplus gold upgrading the farm, and otherwise
+// sleep. Returns
 // { msg, slept } -- `slept` tells the caller whether a day (and thus
 // save-worthy progress) actually passed, same as pressing `z` would.
 export function autoPlayStep(state) {
@@ -513,6 +538,13 @@ export function autoPlayStep(state) {
   const untilled = tiles.filter(({ tile }) => !tile.tilled && !tile.crop && TILLABLE.includes(tile.base)).filter(notReserved);
   const toTill = nearestTo(p, untilled);
   if (toTill) return runAt(state, toTill.x, toTill.y, farming.till, 'plow');
+
+  // Nothing left to till on ground that's already clear -- reclaim more of
+  // it by chopping a tree before spending any gold (on seed, upgrades, or
+  // more land). Costs only energy, and the freed tile becomes tillable
+  // grass a future tick will pick up on its own.
+  const chopMsg = tryChopTree(state, tiles);
+  if (chopMsg) return tiredOrResult(state, chopMsg);
 
   // Nothing left to work with hand tools -- buy seed for whatever open
   // ground remains, if a safe crop and the gold for it are both available.
