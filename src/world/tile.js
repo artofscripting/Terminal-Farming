@@ -30,6 +30,7 @@ export const BUILDINGS = {
   spinner:     { glyph: 'S', color: '#c0a0d0', walk: false },
   weaver:      { glyph: 'E', color: '#9060b0', walk: false },
   cloth_maker: { glyph: 'L', color: '#6040a0', walk: false },
+  seed_plant:  { glyph: 'P', color: '#8fbf4f', walk: false },
 };
 
 // Create a fresh, empty tile of a given base terrain.

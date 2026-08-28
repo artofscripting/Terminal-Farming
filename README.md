@@ -61,8 +61,9 @@ All of the above (except movement and `P`) act only **on the tile you're standin
 | `S` | Lifetime stats & achievements (gold earned, crops harvested, days played, ...) |
 | `M` | Overview map — your position, owned plots, and nearby towns on one compressed screen |
 | `Y` | Workshops — process a built workshop's recipe (as many as you have materials for) |
+| `C` | Seed Plant — convert harvested crops into seeds of the same crop (4-6 seeds per unit, `m` cycles the batch size x1/x5/x10/x25) |
 | `H` | Walk home — auto-paths to your house (preferring roads) and travels there one tile at a time, sleeping in place if you run out of energy; press `H` again to cancel |
-| `Z` | Auto-play — runs your farm hands-off, one action every 0.1s. **It never teleports** — if the next thing to do is more than a tile away, it walks there first (real pathing, one tile per 0.1s, the same route and energy/fuel cost the movement keys would spend) and only acts once it arrives. **If you own a tractor, mounts it the moment it has fuel and drives it for every field action below (3x3 area, fuel instead of energy, so it works far more ground per day than by hand)**, harvests ripe crops, waters, plants, tills bare owned ground, **processes raw materials at any built workshop**, sells what's left (holding back anything a workshop could still turn into a better good), and buys more seed once it runs out — a weighted-random mix of whatever safely matures before the next frost risk, favoring profit but never locking onto one monocrop, **so the field fills in as a genuine mix of crops**. Exception: once you're housing animals and hay drops under an **8-week reserve**, it grows **Wheat** exclusively until that's topped back up, since Wheat harvests also leave hay behind. Keeps a **2000g** reserve at all times — it only spends surplus above that floor, in order: tool upgrades, **wells for any irrigated tile that's lost water coverage, irrigation for the rest of each owned plot**, **topping up an owned tractor's fuel tank**, ranch **and workshop** buildings, buying hay to finish the 8-week reserve (once there's no open ground left to grow more Wheat) + auto-feed, animals to fill them, and — only once every owned field is fully tilled, planted, and watered *and* there's energy to spare — adjacent land. Sleeps when there's truly nothing left to do; press `Z` again to cancel |
+| `Z` | Auto-play — runs your farm hands-off, one action every 0.1s. **It never teleports** — if the next thing to do is more than a tile away, it walks there first (real pathing, one tile per 0.1s, the same route and energy/fuel cost the movement keys would spend) and only acts once it arrives. **If you own a tractor, mounts it the moment it has fuel and drives it for every field action below (3x3 area, fuel instead of energy, so it works far more ground per day than by hand)**, harvests ripe crops, waters, plants, tills bare owned ground, **processes raw materials at any built workshop**, **converts some of a harvested crop into seed at an owned Seed Plant if that crop's own seed stock has run low (before it would otherwise get sold away)**, sells what's left (holding back anything a workshop could still turn into a better good), and buys more seed once it runs out — a weighted-random mix of whatever safely matures before the next frost risk, favoring profit but never locking onto one monocrop, **so the field fills in as a genuine mix of crops**. Exception: once you're housing animals and hay drops under an **8-week reserve**, it grows **Wheat** exclusively until that's topped back up, since Wheat harvests also leave hay behind. Keeps a **2000g** reserve at all times — it only spends surplus above that floor, in order: tool upgrades, **wells for any irrigated tile that's lost water coverage, irrigation for the rest of each owned plot**, **topping up an owned tractor's fuel tank**, ranch **and workshop** buildings, buying hay to finish the 8-week reserve (once there's no open ground left to grow more Wheat) + auto-feed, animals to fill them, and — only once every owned field is fully tilled, planted, and watered *and* there's energy to spare — adjacent land. Sleeps when there's truly nothing left to do; press `Z` again to cancel |
 | `z` | Sleep (end day, autosave) |
 | `v` / `F5` | Save menu |
 | `F9` | Load menu |
@@ -112,6 +113,7 @@ All of the above (except movement and `P`) act only **on the tile you're standin
 | `S` | Spinner |
 | `E` | Weaver |
 | `L` | Cloth Goods Maker |
+| `P` | Seed Plant |
 
 A few glyphs do double duty (e.g. `~` is both water and tilled soil, `O` is both the well and ripe pumpkin). In-game, press **`?`** then the glyph's key to see every meaning it can have, both as a control and on the map.
 
@@ -174,6 +176,7 @@ Each day you walk the farm, spend energy on work, then **`z` sleep**. Overnight:
 | `8` | Ranch submenu — coop, barn, chickens, cows, hay |
 | `9` | Buy kitchen (unlock cooking) |
 | `0` | Workshops submenu — buy sawmill, carpenter, cotton gin, spinner, weaver, cloth goods maker |
+| `S` | Buy Seed Plant (450g) — converts harvested crops into seed, see below |
 | `q` | Leave |
 
 **Traveling merchant:** roughly 1 in 10 days, the shop root screen shows a `D` line offering one random seed or fertilizer at 40% off, good for that day only.
@@ -304,6 +307,14 @@ Turn raw materials into higher-value goods. Buy a workshop (each needs a free ti
 **★ Multi-source bonus:** a recipe that combines materials from more than one source (Furniture, Sack) is guaranteed at least ★ quality, with a further chance at ★★ — plain single-ingredient recipes only have the normal chance of any star at all. Quality affects sell price the same way it does for crops (★ +25%, ★★ +50%).
 
 **Auto-play (`Z`)** processes materials at any built workshop automatically, and never auto-sells raw materials or intermediates a built workshop still needs — only finished goods (and anything with nowhere left to go) get sold off.
+
+---
+
+## Seed Plant (`C`, building `P` from shop `S`)
+
+Turns a harvested crop back into seed of the same crop — 450g to build, needs a free tile on owned land like any other building. Press **`C`** while standing next to it (it's a building, so not walkable — same as the tractor garage) to open the interface: pick a crop you're holding, and it converts your current batch size worth of it into **4-6 seeds per unit converted** (randomized, so batches of the same crop won't always yield the same seed count). `m` cycles the batch size through x1/x5/x10/x25. Any quality of the crop works, spending your lowest-quality stacks first. It never converts anything on its own — only a keypress here, or auto-play, ever triggers it.
+
+**Auto-play (`Z`)** treats this as part of its harvest → sell pipeline: before selling off a harvested crop, it checks whether that crop's own seed stock has dropped low, and if so converts a bit of it into seed first (enough to cover roughly one restock's worth) rather than selling all of it and having to buy seed back with gold later.
 
 ---
 

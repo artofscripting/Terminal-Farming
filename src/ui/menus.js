@@ -21,7 +21,8 @@ import {
   culinaryQualityBonus, charmRewardMultiplier, charmBonusHearts,
 } from '../systems/skills.js';
 import { keyLabel, lookupKey, lookupMapGlyph } from './keyReference.js';
-import { count as invCount } from '../systems/inventory.js';
+import { count as invCount, countBase } from '../systems/inventory.js';
+import { SEED_PLANT_COST, SEEDS_PER_CROP_MIN, SEEDS_PER_CROP_MAX, seedPlantState } from '../systems/seedplant.js';
 import { INFO_COMMANDS, CHEAT_COMMANDS } from '../systems/console.js';
 import { plotBounds } from '../world/plots.js';
 import { townCenter, REGION_TILES } from '../world/structures.js';
@@ -72,10 +73,12 @@ export function renderShopRoot(renderer, state) {
   const kitchen = state.hasKitchen ? 'Kitchen (owned)' : 'Buy kitchen  (250g)';
   row(renderer, 11, '9', kitchen, state.hasKitchen ? DIM : TEXT);
   row(renderer, 12, '0', 'Workshops (sawmill, carpenter, cotton gin, spinner, weaver, cloth maker)');
+  const seedPlant = seedPlantState(state).built ? 'Seed Plant (owned)' : `Buy Seed Plant  (${SEED_PLANT_COST}g)`;
+  row(renderer, 13, 'S', seedPlant, seedPlantState(state).built ? DIM : TEXT);
 
   const deal = dailyDeal(state);
   if (deal) {
-    row(renderer, 13, 'D', `Traveling merchant: ${deal.name} — ${deal.price}g (was ${deal.base}g, today only!)`, TITLE);
+    row(renderer, 14, 'D', `Traveling merchant: ${deal.name} — ${deal.price}g (was ${deal.base}g, today only!)`, TITLE);
   }
 }
 
@@ -242,6 +245,31 @@ export function renderWorkshops(renderer, state) {
   });
   renderer.text(2, renderer.height - 2, 'Press a key to process as many as you have materials for.', DIM, PANEL_BG);
   return recipes.map((r) => ({ workshopId: r.workshopId, recipeId: r.id }));
+}
+
+// Seed Plant screen: pick a harvested crop, convert `mult` of it into
+// 4-6 seeds each. Only ever runs when the player presses a key here (or
+// auto-play calls convertToSeeds directly) -- never automatic.
+export function renderSeedPlant(renderer, state, opts) {
+  const { mult } = opts;
+  panel(renderer, `Seed Plant — convert x${mult}  (m: change batch size)`);
+  const inv = state.player.inventory;
+  const baseIds = [...new Set(Object.keys(inv.crops || {}).map((k) => decodeCropKey(k).id))]
+    .sort((a, b) => Crops.get(a).name.localeCompare(Crops.get(b).name));
+  if (baseIds.length === 0) {
+    renderer.text(3, 3, 'No harvested crops to convert.', DIM, PANEL_BG);
+    return [];
+  }
+  baseIds.forEach((id, i) => {
+    if (i >= KEYS.length) return;
+    const have = countBase(inv, 'crops', id);
+    const def = Crops.get(id);
+    const enough = have >= mult;
+    const line = `${def.name.padEnd(16)} have x${have}  -> ${mult * SEEDS_PER_CROP_MIN}-${mult * SEEDS_PER_CROP_MAX} seeds`;
+    row(renderer, 3 + i, KEYS[i], line, enough ? TEXT : DIM);
+  });
+  renderer.text(2, renderer.height - 2, `Press a key to convert x${mult} of that crop.`, DIM, PANEL_BG);
+  return baseIds;
 }
 
 // Labor board: hire/fire workers, reassign zones, upgrade bunkhouse.

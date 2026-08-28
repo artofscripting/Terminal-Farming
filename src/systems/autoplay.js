@@ -8,7 +8,7 @@ import { Crops } from '../content/registry.js';
 import { RANCH_BUILDINGS, ANIMALS, HAY_COST, buildingLevelDef } from '../content/animals.js';
 import { WORKSHOPS, allRecipes } from '../content/workshops.js';
 import { plotTiles } from '../world/plots.js';
-import { count } from './inventory.js';
+import { count, countBase } from './inventory.js';
 import { seedPrice, buySeed, sellableItems, sellAllItems, nextToolTier, upgradeTool } from './economy.js';
 import { meetsCropLevel } from './skills.js';
 import { sleep } from './calendar.js';
@@ -23,6 +23,7 @@ import {
   installIrrigationPlot, buyWell, hasNearbyWater, IRRIGATION_COST, IRRIGATION_RADIUS, WELL_COST,
 } from './irrigation.js';
 import { toggleMount, tractorField, buyFuel, FUEL_CAN, FUEL_CAN_COST } from './machines.js';
+import { convertToSeeds, SEEDS_PER_CROP_MIN, SEEDS_PER_CROP_MAX } from './seedplant.js';
 import { findPath } from './pathfind.js';
 import { tryStep } from './movement.js';
 import * as farming from './farming.js';
@@ -155,6 +156,32 @@ function tryProcess(state) {
   for (const r of allRecipes()) {
     if (!workshopState(state)[r.workshopId]?.built) continue;
     if (maxRuns(state, r) > 0) return runWorkshopRecipe(state, r.workshopId, r.id, Infinity).msg;
+  }
+  return null;
+}
+
+// If the seed plant is built and some harvested crop's seed stock has run
+// low, convert a bit of that crop into seeds before it can get auto-sold --
+// this is the assessment the seed plant itself never makes on its own; it
+// only ever converts when asked, whether that's a player keypress or this.
+// Targets SEED_BATCH_SIZE (the same restock size buySeed uses) so the plant
+// can cover at least one restock cycle without spending any gold on seed.
+function tryMakeSeeds(state) {
+  const sp = state.seedPlant;
+  if (!sp?.built) return null;
+  const inv = state.player.inventory;
+  const cropIds = [...new Set(Object.keys(inv.crops || {}).map((k) => farming.decodeCropKey(k).id))];
+  const avgYield = (SEEDS_PER_CROP_MIN + SEEDS_PER_CROP_MAX) / 2;
+  for (const id of cropIds) {
+    if (count(inv, 'seeds', id) >= SEED_BATCH_SIZE) continue;
+    const haveCrop = countBase(inv, 'crops', id);
+    if (haveCrop < 1) continue;
+    const qty = Math.min(haveCrop, Math.max(1, Math.ceil((SEED_BATCH_SIZE - count(inv, 'seeds', id)) / avgYield)));
+    const spot = walkableNeighbor(state.world, sp.tile.x, sp.tile.y);
+    if (!spot) return null;
+    const walkMsg = stepToward(state, spot.x, spot.y);
+    if (walkMsg) return walkMsg;
+    return convertToSeeds(state, id, qty).msg;
   }
   return null;
 }
@@ -399,12 +426,13 @@ function tryFarmUpgrade(state, tiles) {
 // if not already driving it (every field action below then routes through
 // it automatically, same as the player's own field() router), harvest ripe
 // crops, water thirsty ones, process raw materials at any built workshop,
-// sell whatever's left (holding back anything a workshop could still use),
-// plant into empty tilled ground, till bare owned ground, buy more seed when
-// there's nothing left to plant with, spend surplus gold upgrading the farm,
-// and otherwise sleep. Returns { msg, slept } -- `slept` tells the caller
-// whether a day (and thus save-worthy progress) actually passed, same as
-// pressing `z` would.
+// convert some harvested crop into seed at an owned seed plant if that
+// crop's seed stock has run low, sell whatever's left (holding back
+// anything a workshop could still use), plant into empty tilled ground,
+// till bare owned ground, buy more seed when there's nothing left to plant
+// with, spend surplus gold upgrading the farm, and otherwise sleep. Returns
+// { msg, slept } -- `slept` tells the caller whether a day (and thus
+// save-worthy progress) actually passed, same as pressing `z` would.
 export function autoPlayStep(state) {
   const p = state.player;
   const tiles = ownedWorkableTiles(state);
@@ -425,6 +453,9 @@ export function autoPlayStep(state) {
 
   const processMsg = tryProcess(state);
   if (processMsg) return { msg: processMsg, slept: false };
+
+  const seedMsg = tryMakeSeeds(state);
+  if (seedMsg) return tiredOrResult(state, seedMsg);
 
   const reservedGoods = reservedForProcessing(state);
   const sellable = (it) => {

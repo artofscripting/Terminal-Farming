@@ -16,6 +16,7 @@ import { giftItem, isInTown } from './systems/town.js';
 import { enterContest, buyBoothSeeds } from './systems/festivals.js';
 import { installIrrigation, installIrrigationPlot, buyWell } from './systems/irrigation.js';
 import { buyWorkshop, process as runWorkshopRecipe } from './systems/workshops.js';
+import { buySeedPlant, convertToSeeds, seedPlantState } from './systems/seedplant.js';
 import { runCommand } from './systems/console.js';
 import { findPath } from './systems/pathfind.js';
 import { tryStep } from './systems/movement.js';
@@ -87,6 +88,7 @@ export class Game {
       case 'stats': return this.keyStats(k);
       case 'map': return this.keyMap(k);
       case 'workshops': return this.keyWorkshops(k);
+      case 'seedplant': return this.keySeedPlant(k);
       case 'save': return this.keySave(k);
       case 'load': return this.keyLoad(k);
       case 'pause': return this.keyPause(k);
@@ -140,6 +142,7 @@ export class Game {
       case 'S': this.mode = 'stats'; break;
       case 'M': this.mode = 'map'; break;
       case 'Y': this.mode = 'workshops'; break;
+      case 'C': this.openSeedPlant(); break;
       case 'H':
         if (this.walkHomePath) this.stopWalkHome('Walk home cancelled.');
         else this.startWalkHome();
@@ -337,6 +340,31 @@ export class Game {
     this.ui.kitchenEat = false;
   }
 
+  // ---- Seed Plant ----
+  openSeedPlant() {
+    if (!seedPlantState(this.state).built) {
+      this.setStatus('Build a Seed Plant first (shop S).');
+      this.render();
+      return;
+    }
+    this.mode = 'seedplant';
+    this.ui.seedPlantMult = this.ui.seedPlantMult || 1;
+  }
+
+  keySeedPlant(k) {
+    if (k === 'q' || k === 'escape' || k === 'C') { this.mode = 'game'; this.render(); return; }
+    if (k === 'm') {
+      const cycle = [1, 5, 10, 25];
+      const i = cycle.indexOf(this.ui.seedPlantMult || 1);
+      this.ui.seedPlantMult = cycle[(i + 1) % cycle.length];
+      this.render();
+      return;
+    }
+    const cropId = this.ui.seedPlantKeys?.[keyIndex(k)];
+    if (cropId) this.setStatus(convertToSeeds(this.state, cropId, this.ui.seedPlantMult || 1).msg);
+    this.render();
+  }
+
   // ---- Town ----
   openTown() {
     if (!isInTown(this.state)) {
@@ -499,6 +527,7 @@ export class Game {
       else if (k === '8') this.ui.shopScreen = 'ranch';
       else if (k === '9') this.setStatus(buyKitchen(this.state).msg);
       else if (k === '0') this.ui.shopScreen = 'workshopBuy';
+      else if (k === 'S') this.setStatus(buySeedPlant(this.state).msg);
       else if (k === 'D') this.setStatus(buyDailyDeal(this.state).msg);
     } else if (s === 'seed') {
       const id = this.ui.shopKeys[keyIndex(k)];
@@ -563,6 +592,10 @@ export class Game {
     if (this.mode === 'stats') { menus.renderStats(this.renderer, this.state); return this.flush(); }
     if (this.mode === 'map') { menus.renderMap(this.renderer, this.state); return this.flush(); }
     if (this.mode === 'workshops') { this.ui.workshopKeys = menus.renderWorkshops(this.renderer, this.state); return this.flush(); }
+    if (this.mode === 'seedplant') {
+      this.ui.seedPlantKeys = menus.renderSeedPlant(this.renderer, this.state, { mult: this.ui.seedPlantMult || 1 });
+      return this.flush();
+    }
     if (this.mode === 'save') { menus.renderSaveMenu(this.renderer, this.state, this.save.slotExists); return this.flush(); }
     if (this.mode === 'load') { menus.renderLoadMenu(this.renderer, this.save.slotExists); return this.flush(); }
     if (this.mode === 'pause') { menus.renderPause(this.renderer, this.ui.pauseConfirm); return this.flush(); }
