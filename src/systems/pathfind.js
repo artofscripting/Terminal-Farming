@@ -1,11 +1,13 @@
-// Grid pathfinding for the "walk home" auto-travel feature (H). Uses A* with
-// a cost function matching the real per-tile energy cost from game.js's
-// move() (roads are far cheaper than open ground), so the cheapest path found
-// is also the path that prefers roads whenever that's actually optimal.
+// Grid pathfinding for auto-travel (the "walk home" H key, and auto-play's
+// own walking -- systems/autoplay.js). Uses A* with a cost function matching
+// the real per-tile energy cost from game.js's move() (roads are far cheaper
+// than open ground), so a path that happens to run along a road still
+// benefits from it -- see the heuristic note below for the one place this
+// isn't strictly the mathematically cheapest route.
 
 const STEP_COST = 1;
 const ROAD_COST = 0.1;
-const MAX_NODES = 40000; // bounds worst-case search time/memory
+const MAX_NODES = 150000; // bounds worst-case search time/memory
 
 // Minimal binary min-heap of [priority, value] pairs. No decrease-key support
 // -- callers re-push on improvement and skip stale pops via a closed set.
@@ -55,7 +57,8 @@ function tileEnterCost(world, x, y) {
   return world.getTile(x, y).base === 'road' ? ROAD_COST : STEP_COST;
 }
 
-// Cheapest walkable path from (sx,sy) to (tx,ty). Returns an array of [x,y]
+// A low-cost (not always provably cheapest -- see the heuristic note above)
+// walkable path from (sx,sy) to (tx,ty). Returns an array of [x,y]
 // steps (start excluded, goal included, empty array if already there), or
 // null if unreachable or the search exceeds its node budget.
 export function findPath(world, sx, sy, tx, ty) {
@@ -67,9 +70,19 @@ export function findPath(world, sx, sy, tx, ty) {
   const cameFrom = new Map();
   const closed = new Set();
   const open = new MinHeap();
-  // Admissible heuristic: the cheapest possible tile (a road) costs
-  // ROAD_COST, so remaining cost can never be underestimated below that.
-  const heuristic = (x, y) => (Math.abs(x - tx) + Math.abs(y - ty)) * ROAD_COST;
+  // Weighted by STEP_COST (regular ground), not the strictly-admissible
+  // ROAD_COST -- a fully admissible heuristic assumes the rest of the trip
+  // could be all-road, which is wildly optimistic for a long walk that's
+  // mostly open ground, and made the search fan out almost like plain
+  // Dijkstra instead of driving toward the goal (a 350+ tile trip, common
+  // once a quest needs a walk back to town from a far-expanded farm, blew
+  // straight through the node budget and returned "no path" even though
+  // one existed). This trades strict shortest-path optimality -- it may
+  // occasionally skip a detour to a distant road that would've been very
+  // slightly cheaper -- for search cost that stays roughly linear in
+  // distance instead of exploding, which matters far more for a farming
+  // game than perfect energy efficiency on a rare long walk.
+  const heuristic = (x, y) => (Math.abs(x - tx) + Math.abs(y - ty)) * STEP_COST;
   open.push(heuristic(sx, sy), [sx, sy]);
 
   let explored = 0;
