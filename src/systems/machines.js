@@ -179,9 +179,15 @@ function workTile(state, action, x, y) {
     if (!def || tile.crop.stage < def.stages) return false;
     add(state.player.inventory, 'crops', qualityKey(def.id, 0), 1);
     if (def.hayYield) ranchState(state).hay += def.hayYield;
-    tile.crop = null;
-    tile.tilled = false;
-    tile.watered = false;
+    if (def.regrowDays) {
+      tile.crop.stage = Math.max(0, def.stages - def.regrowDays);
+      tile.crop.dryDays = 0;
+      tile.watered = false;
+    } else {
+      tile.crop = null;
+      tile.tilled = false;
+      tile.watered = false;
+    }
     state.world.touch(x, y);
     gainXp(state, 'farming', 3);
     return true;

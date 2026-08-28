@@ -195,14 +195,23 @@ export function harvest(state) {
     if (Math.random() < farmingYieldBonusChance(state)) qty += 1; // Farming perk
     const quality = rollQuality(state, tile);
     add(p.inventory, 'crops', qualityKey(def.id, quality), qty);
-    tile.crop = null;
-    tile.tilled = false;
-    tile.watered = false;
-    tile.fertilizer = null;
+    if (def.regrowDays) {
+      // A bush/vine crop: stays planted, just drops back to an earlier
+      // stage and needs watering again to ripen a second (third, ...) time.
+      tile.crop.stage = Math.max(0, def.stages - def.regrowDays);
+      tile.crop.dryDays = 0;
+      tile.watered = false;
+    } else {
+      tile.crop = null;
+      tile.tilled = false;
+      tile.watered = false;
+      tile.fertilizer = null;
+    }
     state.world.touch(x, y);
     gainXp(state, 'farming', 3);
     did += qty;
     msg = `Harvested ${qty}x ${def.name}${quality ? ' ' + '★'.repeat(quality) : ''}.`;
+    if (def.regrowDays) msg += ` (regrows in ${def.regrowDays}d)`;
     if (def.hayYield) {
       const hayGained = def.hayYield * qty;
       ranchState(state).hay += hayGained;
