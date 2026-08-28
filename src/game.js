@@ -9,7 +9,7 @@ import { buyPlotAt, expandFarm } from './systems/plotmarket.js';
 import { buySeed, sellItem, sellAllItems, buyFertilizer, buyDailyDeal, upgradeTool } from './systems/economy.js';
 import { cook, eat, buyKitchen } from './systems/kitchen.js';
 import { buyRanchBuilding, upgradeRanchBuilding, buyAnimal, buyHay, feedAll, toggleAutoFeed } from './systems/ranch.js';
-import { buyTractor, buyFuel, toggleMount, cycleImplement, toggleAuto, cycleZone, tractorField } from './systems/machines.js';
+import { buyTractor, buyFuel, toggleMount, cycleImplement, toggleAuto, cycleZone, tractorField, tractorFieldPlot } from './systems/machines.js';
 import { hireWorker, fireWorker, reassignZone, upgradeBunkhouse } from './systems/labor.js';
 import { acceptQuest, turnInQuest } from './systems/quests.js';
 import { giftItem, isInTown } from './systems/town.js';
@@ -135,6 +135,7 @@ export class Game {
       case 'I': this.setStatus(installIrrigation(this.state)); break;
       case 'P': this.setStatus(installIrrigationPlot(this.state)); break;
       case 'W': this.setStatus(buyWell(this.state)); break;
+      case 'F': this.setStatus(tractorFieldPlot(this.state)); break;
       case 'b': this.openKitchen(); break;
       case ';': this.mode = 'ranch'; break;
       case 'u': this.mode = 'labor'; break;

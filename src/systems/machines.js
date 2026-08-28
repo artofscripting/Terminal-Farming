@@ -214,6 +214,27 @@ export function tractorField(state, action) {
   return `Tractor ${action}: ${worked} tile${worked === 1 ? '' : 's'}. Fuel ${tr.fuel}/${tr.fuelCap}.`;
 }
 
+// Manual whole-plot pass with whatever implement is currently attached
+// (tr.implement -- the same value `n` cycles and autoRoute uses overnight).
+// Unlike tractorField's 3x3 area around the player, this works every tile
+// in the plot the player is standing in, right now, in one keypress.
+export function tractorFieldPlot(state) {
+  const tr = tractorState(state);
+  if (!tr.mounted) return 'Mount the tractor first.';
+  const plotId = plotIdAt(state.player.x, state.player.y);
+  let worked = 0;
+  for (const { x, y } of plotTiles(plotId)) {
+    if (tr.fuel <= 0) break;
+    if (workTile(state, tr.implement, x, y)) {
+      tr.fuel -= 1;
+      worked += 1;
+    }
+  }
+  if (tr.fuel <= 0 && worked === 0) return 'Out of fuel (buy a fuel can, shop 7).';
+  if (worked === 0) return `Nothing to ${tr.implement} in this plot.`;
+  return `Tractor ${tr.implement} (whole plot): ${worked} tile${worked === 1 ? '' : 's'}. Fuel ${tr.fuel}/${tr.fuelCap}.`;
+}
+
 // Overnight: run the selected implement across the auto zone while fuelled.
 export function autoRoute(state) {
   const tr = tractorState(state);

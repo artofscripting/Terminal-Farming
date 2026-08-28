@@ -79,6 +79,7 @@ All of the above (except movement and `P`) act only **on the tile you're standin
 |-----|--------|
 | `m` | Mount / dismount next to garage **G** (blocked in rain) |
 | `n` | Cycle implement (plow / seed / water / harvest) |
+| `F` | Run the current implement over **every tile in the plot you're standing in** (fuel per tile, stops when the tank runs dry — call again after refueling to finish a bigger plot) — while `t`/`p`/`e`/`r` only cover the tractor's 3×3 around you |
 | `y` | Toggle overnight auto-route |
 | `,` | Cycle auto zone |
 

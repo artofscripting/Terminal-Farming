@@ -51,6 +51,7 @@ export const KEY_MEANINGS = {
   C: [['Game', 'Open the Seed Plant: convert a harvested crop into seed (stand next to it)'], ['Seed Plant', 'Close the Seed Plant']],
   m: [['Game', 'Mount / dismount the tractor next to the garage'], ['Kitchen', 'Toggle x1 / x5 cook batch size']],
   n: [['Game', 'Cycle the tractor\u2019s overnight auto-route implement'], ['Help (browsing pages)', 'Next help page'], ['Harvest Diary', 'Scroll further back in time'], ['Pause / confirm dialogs', 'Cancel / No']],
+  F: [['Game (tractor mounted)', "Run the current implement over every tile in the plot you're standing in (fuel per tile)"]],
   y: [['Game', 'Toggle the tractor\u2019s overnight auto-route'], ['Pause / confirm dialogs', 'Confirm / Yes']],
   ',': [['Game', 'Cycle the tractor\u2019s overnight auto-route zone']],
   z: [['Game', 'Sleep (end the day, autosave)'], ['Labor board', "Assign the nearest worker's zone to your plot"]],
