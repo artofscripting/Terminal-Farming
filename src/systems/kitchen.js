@@ -5,14 +5,6 @@ import { plotTiles } from '../world/plots.js';
 import { gainXp, culinaryQualityBonus, rollQualityBonus } from './skills.js';
 
 const KITCHEN_COST = 250;
-export const ENERGY_GAIN_MULT = 0.1; // balance pass: food energy nerfed 10x
-
-// A dish's actual energy restore after the balance multiplier, rounded to
-// the same 0.1 precision energy is already tracked at (road-walking already
-// costs fractional energy -- see game.js's move()).
-export function energyFromRecipe(recipe) {
-  return Math.round(recipe.eat * ENERGY_GAIN_MULT * 10) / 10;
-}
 
 // Base-id count within a category, summing across quality variants (crops/dishes).
 function haveIngredient(inv, cat, id) {
@@ -104,9 +96,8 @@ export function eat(state, dishKey) {
   inv.dishes[dishKey] -= 1;
   if (inv.dishes[dishKey] === 0) delete inv.dishes[dishKey];
   const p = state.player;
-  const gain = energyFromRecipe(recipe);
-  p.energy = Math.min(p.maxEnergy, p.energy + gain);
-  return `Ate ${recipe.name} (+${gain} energy).`;
+  p.energy = Math.min(p.maxEnergy, p.energy + recipe.eat);
+  return `Ate ${recipe.name} (+${recipe.eat} energy).`;
 }
 
 export function listRecipes() {

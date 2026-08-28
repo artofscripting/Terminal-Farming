@@ -2,7 +2,7 @@ import { Crops, Fertilizers, Tools } from '../content/registry.js';
 import { decodeCropKey } from '../systems/farming.js';
 import { sellableItems, nextToolTier, itemName, seedPrice, marketFactor, dailyDeal, priceSparkline } from '../systems/economy.js';
 import { expandPrice, nextExpansionPlot } from '../systems/plotmarket.js';
-import { canCook, listRecipes, dishesInInventory, energyFromRecipe } from '../systems/kitchen.js';
+import { canCook, listRecipes, dishesInInventory } from '../systems/kitchen.js';
 import { recipeDef } from '../content/recipes.js';
 import { ranchSummary, nextRanchLevel } from '../systems/ranch.js';
 import { RANCH_BUILDINGS, ANIMALS, HAY_COST, ranchBuildingDef, buildingLevelDef } from '../content/animals.js';
@@ -581,7 +581,7 @@ export function renderKitchen(renderer, state, opts) {
       if (i >= KEYS.length) return;
       const { id } = decodeCropKey(dk);
       const def = recipeDef(id);
-      const e = def?.eat ? `+${energyFromRecipe(def)}E` : 'not edible';
+      const e = def?.eat ? `+${def.eat}E` : 'not edible';
       row(renderer, 3 + i, KEYS[i], `${itemName('dishes', dk).padEnd(20)} x${state.player.inventory.dishes[dk]}  ${e}`);
     });
     renderer.text(2, renderer.height - 2, 'Press a key to eat 1.', DIM, PANEL_BG);
