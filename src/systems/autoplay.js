@@ -195,12 +195,30 @@ function nearbyForageTiles(state, tiles) {
 // nearbyForageTiles already lists those; wild forage otherwise) and gathers
 // it. gather() itself costs no energy -- only the walk there does, same as
 // any other tile.
+//
+// Commits to state.autoplayForageTarget once picked instead of re-running
+// nearbyForageTiles fresh (from wherever the player now stands) every tick:
+// that scan is centered on the CURRENT position, so a forage tile sitting
+// right at the scan-radius boundary can flip in and out of range from a
+// single step. Combined with a walk route whose first step isn't straight
+// at the target (going around an obstacle), that produced a real stuck
+// loop -- forage back in range, take a step, forage now out of range, the
+// next-priority action (till, elsewhere) takes over, its own first step
+// puts forage back in range, repeat forever. Once a target is picked here
+// it's kept regardless of the current-position radius until actually
+// gathered (or it stops being forage some other way, e.g. built over).
 function tryGatherForage(state, tiles) {
-  const target = nearestTo(state.player, nearbyForageTiles(state, tiles));
+  const cached = state.autoplayForageTarget;
+  const target = (cached && state.world.getTile(cached.x, cached.y).forage)
+    ? cached
+    : nearestTo(state.player, nearbyForageTiles(state, tiles));
+  state.autoplayForageTarget = target || null;
   if (!target) return null;
   const walkMsg = stepToward(state, target.x, target.y);
   if (walkMsg) return walkMsg;
-  return gather(state);
+  const msg = gather(state);
+  state.autoplayForageTarget = null;
+  return msg;
 }
 
 // True once every farmable tile is tilled, planted, and watered -- rock/water/
