@@ -130,6 +130,7 @@ export class Game {
       case 'X': this.cycleFertilizer(); break;
       case 'x': this.setStatus(farming.fertilize(this.state)); break;
       case 'B': this.setStatus(buyPlotAt(this.state, p.x, p.y).msg); break;
+      case 'T': this.setStatus(farming.chopTree(this.state)); break;
       case 'I': this.setStatus(installIrrigation(this.state)); break;
       case 'P': this.setStatus(installIrrigationPlot(this.state)); break;
       case 'W': this.setStatus(buyWell(this.state)); break;

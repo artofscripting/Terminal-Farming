@@ -43,8 +43,9 @@ Energy drops with actions. Sleep restores it. Eat cooked food in the kitchen whe
 | `I` | Install irrigation on the tile under you |
 | `P` | Install irrigation on every eligible tile in the plot under you |
 | `W` | Buy and place a well on the tile under you |
+| `T` | Chop down a tree on an owned tile next to you (3 energy, +2-4 Oak logs) |
 
-All of the above (except movement and `P`) act only **on the tile you're standing on** — `P` covers every eligible tile in the whole plot.
+All of the above (except movement and `P`) act only **on the tile you're standing on** — `P` covers every eligible tile in the whole plot, and `T` is the one exception that acts on a *neighboring* tile instead, since trees (like rock and water) are never walkable.
 
 ### Menus & meta
 
@@ -94,8 +95,8 @@ All of the above (except movement and `P`) act only **on the tile you're standin
 | `=` | Road, or a gate through a fence |
 | `#` | Fence (blocked) |
 | `~` | Tilled soil (also plain water, untilled) |
-| `^` | Rock (blocked) |
-| `&` | Tree (blocked) |
+| `^` | Rock (blocked, permanent) |
+| `&` | Tree (blocked — chop it down with `T` from a neighboring owned tile) |
 | letter / symbol | Growing crop (cycle seed with `c`) |
 | UPPER / alt symbol | Ripe crop — not always the capitalized letter, check `?` on the glyph |
 | `*` `+` `o` `v` `$` | Forage (press `g`) |
@@ -180,6 +181,8 @@ Each day you walk the farm, spend energy on work, then **`z` sleep**. Overnight:
 | `q` | Leave |
 
 **Traveling merchant:** roughly 1 in 10 days, the shop root screen shows a `D` line offering one random seed or fertilizer at 40% off, good for that day only.
+
+**Owning land never reshapes it:** buying a plot (`B`) or expanding onto an adjacent one (`4`) leaves the terrain exactly as it was — sand, rock, and water are permanent, and any tree stays put until you chop it down (`T`, see Movement & field above). A plot only needs ~40% grass/field/sand to be buyable at all, so expect some owned ground you can't till until it's cleared.
 
 **Tool tiers:** Tier 2 hits a line of 3; Tier 3 hits a 3×3. Upgrade path ~120g then ~350g per tool.
 

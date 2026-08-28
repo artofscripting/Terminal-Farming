@@ -141,15 +141,17 @@ export function expandFarm(state) {
     return { ok: false, msg: `Need ${price}g to expand (you have ${state.player.gold}g).` };
   }
   state.player.gold -= price;
+  // Ownership doesn't reshape the land -- sand, rock, and water are
+  // permanent, and a tree tile stays a tree until someone chops it down
+  // (farming.js's chopTree). Only clear transient farming state, which a
+  // never-owned plot shouldn't have anyway; this is just defensive.
   for (const { x, y } of plotTiles(plotId)) {
     const t = state.world.getTile(x, y);
-    t.base = 'grass';
     t.tilled = false;
     t.watered = false;
     t.fertilizer = null;
     t.crop = null;
     t.forage = null;
-    t.building = null;
     state.world.touch(x, y);
   }
   state.ownedPlots.add(plotId);

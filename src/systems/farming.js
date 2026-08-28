@@ -70,6 +70,36 @@ export function till(state) {
   return `Tilled ${did} tile${did > 1 ? 's' : ''}.`;
 }
 
+const CHOP_ENERGY = 3;
+const CHOP_LOGS_MIN = 2;
+const CHOP_LOGS_MAX = 4;
+
+// Chop down a tree on an owned tile next to the player. Trees are
+// unwalkable terrain (like rock or water), so -- unlike till/water/harvest
+// -- this never acts on the tile underfoot, only on a neighbor; clearing
+// one is a deliberate, costed action, not something ownership or expansion
+// does automatically. Yields the same "oak" crop item a planted Oak Tree
+// does, so it feeds straight into the sawmill or sells on its own.
+export function chopTree(state) {
+  const p = state.player;
+  if (p.energy < CHOP_ENERGY) return 'Too tired to chop.';
+  for (const [dx, dy] of [[0, -1], [0, 1], [-1, 0], [1, 0]]) {
+    const x = p.x + dx;
+    const y = p.y + dy;
+    if (!ownsTile(state, x, y)) continue;
+    const tile = state.world.getTile(x, y);
+    if (tile.base !== 'tree') continue;
+    tile.base = 'grass';
+    state.world.touch(x, y);
+    spend(state, CHOP_ENERGY);
+    const logs = CHOP_LOGS_MIN + Math.floor(Math.random() * (CHOP_LOGS_MAX - CHOP_LOGS_MIN + 1));
+    add(p.inventory, 'crops', 'oak', logs);
+    gainXp(state, 'farming', 4);
+    return `Chopped down a tree (+${logs} oak logs).`;
+  }
+  return 'No tree next to you to chop (own the plot it is on first).';
+}
+
 // Plant the selected seed on tilled, owned soil under the player.
 export function plant(state) {
   const p = state.player;

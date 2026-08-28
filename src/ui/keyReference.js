@@ -36,6 +36,7 @@ export const KEY_MEANINGS = {
   I: [['Game', 'Install irrigation on the tile under you']],
   P: [['Game', 'Install irrigation on every eligible tile in the plot under you']],
   W: [['Game', 'Buy and place a well on the tile under you']],
+  T: [['Game (on foot)', 'Chop down a tree on an owned tile next to you (3 energy, +2-4 Oak logs)']],
   b: [['Game', 'Open the kitchen (cook)'], ['Kitchen', 'Close the kitchen'], ['Labor board', 'Upgrade the bunkhouse (more slots)']],
   ';': [['Game', 'Open the ranch screen'], ['Ranch', 'Close the ranch screen']],
   u: [['Game', 'Open the labor board'], ['Labor board', 'Close the labor board']],
