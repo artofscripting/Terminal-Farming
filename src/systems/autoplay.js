@@ -20,6 +20,7 @@ import { nextExpansionPlot, expandFarm, expandPrice } from './plotmarket.js';
 import {
   installIrrigationPlot, buyWell, hasNearbyWater, IRRIGATION_COST, IRRIGATION_RADIUS, WELL_COST,
 } from './irrigation.js';
+import { toggleMount, tractorField, buyFuel, FUEL_CAN, FUEL_CAN_COST } from './machines.js';
 import * as farming from './farming.js';
 
 const SHOULDER_DAYS = 5; // must match calendar.js's frost shoulder window
@@ -154,13 +155,39 @@ function tryProcess(state) {
   return null;
 }
 
-// Runs the chosen field action at (x,y); if it reports being too tired,
-// sleep instead (same tired-detection idiom autoFarm/autoHarvest already use).
-function runAt(state, x, y, action) {
+// True once the tractor is mounted and has fuel -- matches game.js's own
+// field() router, which prefers the tractor over hand tools whenever both
+// are true. Driving costs no player energy at all (only fuel), so this is
+// a strict efficiency win whenever it's available.
+function tractorReady(state) {
+  const tr = state.tractor;
+  return Boolean(tr && tr.mounted && tr.fuel > 0);
+}
+
+// Runs the chosen field action at (x,y) -- through the tractor (3x3 area,
+// fuel only) when mounted and fuelled, else by hand. If it reports being too
+// tired (hand tools only), sleep instead (same tired-detection idiom
+// autoFarm/autoHarvest already use); tractor failure messages ("Out of
+// fuel...", "Nothing to X here.") never match "tired", so they fall through
+// as an ordinary non-sleep result and the next tick just re-picks a target.
+function runAt(state, x, y, footAction, tractorAction) {
   state.player.x = x;
   state.player.y = y;
-  const msg = action(state);
+  const msg = tractorReady(state) ? tractorField(state, tractorAction) : footAction(state);
   return /tired/i.test(msg) ? { msg: sleep(state), slept: true } : { msg, slept: false };
+}
+
+// Mount the tractor the moment it's usable -- owned, fuelled, not already
+// mounted, and not raining (toggleMount's own rules) -- so every field
+// action above can start routing through it instead of hand tools. Teleports
+// next to the garage first, the same convention every other auto-play
+// action uses (see tryPlaceWell) rather than simulating a walk there.
+function tryMountTractor(state) {
+  const tr = state.tractor;
+  if (!tr || !tr.owned || tr.mounted || tr.fuel <= 0 || state.weather === 'rain') return null;
+  state.player.x = tr.garage.x + 1;
+  state.player.y = tr.garage.y;
+  return toggleMount(state);
 }
 
 // Irrigate the first owned plot that still has eligible ground and fits the
@@ -210,14 +237,15 @@ function tryPlaceWell(state, tiles, affordable) {
 }
 
 // Once there's over UPGRADE_GOLD_THRESHOLD gold and no more urgent farm work,
-// spend the surplus in order: tool tiers, ranch buildings, hay/auto-feed,
-// animals to fill them, and only once all of that is maxed out, adjacent
-// land. UPGRADE_GOLD_THRESHOLD is a floor, not just a starting gate -- every
-// purchase below only goes through if gold afterward would still be at or
-// above it, so auto-play always keeps that much in reserve. Skips anything
-// that fails outright (e.g. a building with no free tile to sit on) rather
-// than getting stuck retrying it forever -- only a purchase that actually
-// succeeds counts as this tick's action.
+// spend the surplus in order: tool tiers, wells/irrigation, topping up an
+// owned tractor's fuel, ranch and workshop buildings, ranch level-ups,
+// hay/auto-feed, animals to fill them, and only once all of that is maxed
+// out, adjacent land. UPGRADE_GOLD_THRESHOLD is a floor, not just a starting
+// gate -- every purchase below only goes through if gold afterward would
+// still be at or above it, so auto-play always keeps that much in reserve.
+// Skips anything that fails outright (e.g. a building with no free tile to
+// sit on) rather than getting stuck retrying it forever -- only a purchase
+// that actually succeeds counts as this tick's action.
 function tryFarmUpgrade(state, tiles) {
   const p = state.player;
   if (p.gold <= UPGRADE_GOLD_THRESHOLD) return null;
@@ -242,6 +270,20 @@ function tryFarmUpgrade(state, tiles) {
   if (wellMsg) return wellMsg;
   const irrigateMsg = tryIrrigate(state, affordable);
   if (irrigateMsg) return irrigateMsg;
+
+  // Keep an owned tractor's tank topped up -- the field loop already prefers
+  // it over hand tools whenever it's mounted and fuelled, so an empty tank
+  // just silently falls back to slower, energy-costing hand work otherwise.
+  const tr = state.tractor;
+  if (tr && tr.owned && tr.fuel < tr.fuelCap) {
+    const spendable = p.gold - UPGRADE_GOLD_THRESHOLD;
+    const cansNeeded = Math.ceil((tr.fuelCap - tr.fuel) / FUEL_CAN);
+    const cans = Math.min(cansNeeded, Math.floor(spendable / FUEL_CAN_COST));
+    if (cans > 0) {
+      const res = buyFuel(state, cans);
+      if (res.ok) return res.msg;
+    }
+  }
 
   const summary = ranchSummary(state);
   for (const b of RANCH_BUILDINGS) {
@@ -309,27 +351,33 @@ function tryFarmUpgrade(state, tiles) {
   return null;
 }
 
-// One discrete auto-play action. Priority: harvest ripe crops, water thirsty
-// ones, process raw materials at any built workshop, sell whatever's left
-// (holding back anything a workshop could still use), plant into empty
-// tilled ground, till bare owned ground, buy more seed when there's nothing
-// left to plant with, spend surplus gold upgrading the farm, and otherwise
-// sleep. Returns { msg, slept } -- `slept` tells the caller whether a day
-// (and thus save-worthy progress) actually passed, same as pressing `z` would.
+// One discrete auto-play action. Priority: mount an owned, fuelled tractor
+// if not already driving it (every field action below then routes through
+// it automatically, same as the player's own field() router), harvest ripe
+// crops, water thirsty ones, process raw materials at any built workshop,
+// sell whatever's left (holding back anything a workshop could still use),
+// plant into empty tilled ground, till bare owned ground, buy more seed when
+// there's nothing left to plant with, spend surplus gold upgrading the farm,
+// and otherwise sleep. Returns { msg, slept } -- `slept` tells the caller
+// whether a day (and thus save-worthy progress) actually passed, same as
+// pressing `z` would.
 export function autoPlayStep(state) {
   const p = state.player;
   const tiles = ownedWorkableTiles(state);
+
+  const mountMsg = tryMountTractor(state);
+  if (mountMsg) return { msg: mountMsg, slept: false };
 
   const ripe = tiles.filter(({ tile }) => {
     const def = tile.crop && Crops.get(tile.crop.id);
     return def && tile.crop.stage >= def.stages;
   });
   const toHarvest = nearestTo(p, ripe);
-  if (toHarvest) return runAt(state, toHarvest.x, toHarvest.y, farming.harvest);
+  if (toHarvest) return runAt(state, toHarvest.x, toHarvest.y, farming.harvest, 'harvest');
 
   const thirsty = tiles.filter(({ tile }) => tile.tilled && tile.crop && !tile.watered);
   const toWater = nearestTo(p, thirsty);
-  if (toWater) return runAt(state, toWater.x, toWater.y, farming.water);
+  if (toWater) return runAt(state, toWater.x, toWater.y, farming.water, 'water');
 
   const processMsg = tryProcess(state);
   if (processMsg) return { msg: processMsg, slept: false };
@@ -384,12 +432,12 @@ export function autoPlayStep(state) {
   if (canPlantSelected) {
     const emptyTilled = tiles.filter(({ tile }) => tile.tilled && !tile.crop).filter(notReserved);
     const toPlant = nearestTo(p, emptyTilled);
-    if (toPlant) return runAt(state, toPlant.x, toPlant.y, farming.plant);
+    if (toPlant) return runAt(state, toPlant.x, toPlant.y, farming.plant, 'seed');
   }
 
   const untilled = tiles.filter(({ tile }) => !tile.tilled && !tile.crop && TILLABLE.includes(tile.base)).filter(notReserved);
   const toTill = nearestTo(p, untilled);
-  if (toTill) return runAt(state, toTill.x, toTill.y, farming.till);
+  if (toTill) return runAt(state, toTill.x, toTill.y, farming.till, 'plow');
 
   // Nothing left to work with hand tools -- buy seed for whatever open
   // ground remains, if a safe crop and the gold for it are both available.

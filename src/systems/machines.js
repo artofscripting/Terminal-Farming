@@ -4,9 +4,10 @@ import { add, remove, count } from './inventory.js';
 import { qualityKey } from './farming.js';
 import { ownsTile } from './plotmarket.js';
 import { plotIdAt, plotTiles } from '../world/plots.js';
+import { ranchState } from './ranch.js';
 
-const FUEL_CAN = 20;
-const FUEL_CAN_COST = 50;
+export const FUEL_CAN = 20;
+export const FUEL_CAN_COST = 50;
 const IMPLEMENTS = ['plow', 'seed', 'water', 'harvest'];
 
 // Lazily create the tractor state.
@@ -169,6 +170,7 @@ function workTile(state, action, x, y) {
     const def = tile.crop && Crops.get(tile.crop.id);
     if (!def || tile.crop.stage < def.stages) return false;
     add(state.player.inventory, 'crops', qualityKey(def.id, 0), 1);
+    if (def.hayYield) ranchState(state).hay += def.hayYield;
     tile.crop = null;
     tile.tilled = false;
     tile.watered = false;
