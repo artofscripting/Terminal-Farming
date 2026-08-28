@@ -167,10 +167,17 @@ function plotHint(state) {
   return { text: `Buy plot: ${price}g (B)`, color: ACCENT };
 }
 
+// Quest accept/turn-in messages (auto-play only -- see game.js's
+// tickAutoPlay, which also holds this on screen for 6s) get a gold banner
+// instead of the plain status bar, so they're unmistakable even in the
+// middle of an unattended run.
 function drawStatus(renderer, state, w, row) {
-  renderer.text(0, row, ' '.repeat(w), HUD_FG, [16, 16, 20]);
+  const highlight = Boolean(state.statusHighlight);
+  const fg = highlight ? [40, 30, 0] : HUD_FG;
+  const bg = highlight ? [240, 200, 90] : [16, 16, 20];
+  renderer.text(0, row, ' '.repeat(w), fg, bg);
   const msg = ' ' + (state.status || '');
-  renderer.text(0, row, msg.slice(0, w), HUD_FG, [16, 16, 20]);
+  renderer.text(0, row, msg.slice(0, w), fg, bg);
 }
 
 function drawHint(renderer, state, w, row) {

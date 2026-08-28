@@ -4,7 +4,7 @@ import { decodeCropKey, qualityKey } from './farming.js';
 import { plotTiles } from '../world/plots.js';
 import { gainXp, culinaryQualityBonus, rollQualityBonus } from './skills.js';
 
-const KITCHEN_COST = 250;
+export const KITCHEN_COST = 250;
 
 // Base-id count within a category, summing across quality variants (crops/dishes).
 function haveIngredient(inv, cat, id) {

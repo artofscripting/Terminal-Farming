@@ -66,8 +66,11 @@ export class Game {
     this.onQuit();
   }
 
-  setStatus(msg) {
-    if (this.state && msg) this.state.status = msg;
+  setStatus(msg, highlight = false) {
+    if (this.state && msg) {
+      this.state.status = msg;
+      this.state.statusHighlight = highlight;
+    }
   }
 
   onKey(name, key, str) {
@@ -253,8 +256,14 @@ export class Game {
 
   tickAutoPlay() {
     if (this.mode !== 'game') { this.stopAutoPlay(); return; }
-    const { msg, slept } = autoPlayStep(this.state);
-    this.setStatus(msg);
+    // Hold a quest accept/turn-in on screen for 6s instead of letting the
+    // very next 100ms tick immediately overwrite it -- skip ticking (and
+    // rendering; nothing changed, so there's nothing new to draw) until
+    // that window elapses.
+    if (this.autoPlayPauseUntil && Date.now() < this.autoPlayPauseUntil) return;
+    const { msg, slept, questEvent } = autoPlayStep(this.state);
+    this.setStatus(msg, questEvent);
+    if (questEvent) this.autoPlayPauseUntil = Date.now() + 6000;
     if (slept) this.save.save(this.state, 'auto');
     this.render();
   }

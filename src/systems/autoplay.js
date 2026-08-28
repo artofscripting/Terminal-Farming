@@ -26,6 +26,15 @@ import { toggleMount, tractorFieldPlot, buyFuel, FUEL_CAN, FUEL_CAN_COST } from 
 import { convertToSeeds, SEEDS_PER_CROP_MIN, SEEDS_PER_CROP_MAX } from './seedplant.js';
 import { findPath } from './pathfind.js';
 import { tryStep } from './movement.js';
+import { gather } from './forage.js';
+import {
+  questState, availableFor, canTurnIn, acceptQuest, turnInQuest,
+} from './quests.js';
+import { questDef } from '../content/quests.js';
+import { isInTown } from './town.js';
+import { townCenter } from '../world/structures.js';
+import { canCook, cook, buyKitchen, KITCHEN_COST } from './kitchen.js';
+import { recipeDef } from '../content/recipes.js';
 import * as farming from './farming.js';
 
 const SHOULDER_DAYS = 5; // must match calendar.js's frost shoulder window
@@ -96,7 +105,29 @@ function pickVariedSeed(state) {
 // through. Falls back to the varied pick outside wheat season (or once the
 // buffer is full) -- tryFarmUpgrade's buyHay step is the remaining safety
 // net for when there's no open ground left to grow more of anything.
+// A crop an active quest is still waiting on, if any -- checked first in
+// pickSeedToPlant so quest progress is a deliberate choice (grow exactly
+// what's owed) rather than waiting on the varied/random rotation to happen
+// to land on it eventually.
+function pendingQuestCropNeed(state) {
+  const q = questState(state);
+  for (const questId of q.active) {
+    const quest = questDef(questId);
+    if (!quest || quest.need.cat !== 'crops' || canTurnIn(state, quest)) continue;
+    const def = Crops.get(quest.need.id);
+    if (def) return def;
+  }
+  return null;
+}
+
 function pickSeedToPlant(state) {
+  const questCrop = pendingQuestCropNeed(state);
+  if (questCrop) {
+    const remaining = safeDaysRemaining(state.calendar.season, state.calendar.day);
+    const questCropEligible = questCrop.seasons.includes(state.calendar.season) &&
+      questCrop.stages <= remaining && meetsCropLevel(state, questCrop);
+    if (questCropEligible) return questCrop;
+  }
   const need = dailyHayNeed(state);
   if (need > 0) {
     const wheat = Crops.get('wheat');
@@ -129,6 +160,49 @@ function nearestTo(p, list) {
   return best;
 }
 
+// Smaller than spawnForage's own radius-10 spawn area on purpose: this scan
+// runs every tick something higher-priority isn't pending (so potentially
+// every tick of a long quest walk through never-before-seen ground), and
+// each new tile touched can force a whole new chunk to generate. Kept tight
+// enough to still catch forage just outside the fence without that cost
+// scaling with how far auto-play wanders.
+const FORAGE_SCAN_RADIUS = 6;
+
+// Every forage tile worth going after: everything on owned land (tiles is
+// already scanned for that every tick, so this is free) plus wild forage
+// within a radius of the player -- gather() works anywhere, unowned wilds
+// included, matching how the player can already forage outside the fence.
+function nearbyForageTiles(state, tiles) {
+  const out = [];
+  const seen = new Set();
+  for (const { x, y, tile } of tiles) {
+    if (tile.forage) { out.push({ x, y }); seen.add(`${x},${y}`); }
+  }
+  const p = state.player;
+  for (let dx = -FORAGE_SCAN_RADIUS; dx <= FORAGE_SCAN_RADIUS; dx++) {
+    for (let dy = -FORAGE_SCAN_RADIUS; dy <= FORAGE_SCAN_RADIUS; dy++) {
+      const x = p.x + dx;
+      const y = p.y + dy;
+      const key = `${x},${y}`;
+      if (seen.has(key)) continue;
+      if (state.world.getTile(x, y).forage) out.push({ x, y });
+    }
+  }
+  return out;
+}
+
+// Walks to the nearest forage (owned land first implicitly, since
+// nearbyForageTiles already lists those; wild forage otherwise) and gathers
+// it. gather() itself costs no energy -- only the walk there does, same as
+// any other tile.
+function tryGatherForage(state, tiles) {
+  const target = nearestTo(state.player, nearbyForageTiles(state, tiles));
+  if (!target) return null;
+  const walkMsg = stepToward(state, target.x, target.y);
+  if (walkMsg) return walkMsg;
+  return gather(state);
+}
+
 // True once every farmable tile is tilled, planted, and watered -- rock/water/
 // tree pockets inside an owned plot don't count against it, only ground that
 // could actually be worked but isn't yet.
@@ -147,6 +221,83 @@ function reservedForProcessing(state) {
     for (const inp of r.inputs) reserved.add(`${inp.cat}:${inp.id}`);
   }
   return reserved;
+}
+
+// "cat:id" keys for whatever an active quest still needs -- the quest's own
+// item, plus (if it wants a cooked dish) that recipe's ingredients too, so
+// neither gets auto-sold out from under a quest before it can be finished.
+// Same blanket-reservation approach reservedForProcessing uses (holds back
+// the whole item type, not just the qty owed) -- it clears itself the
+// moment the quest is turned in, same as a workshop's reservation clears
+// once nothing needs that input anymore.
+function reservedForQuests(state) {
+  const q = questState(state);
+  const reserved = new Set();
+  for (const questId of q.active) {
+    const quest = questDef(questId);
+    if (!quest) continue;
+    reserved.add(`${quest.need.cat}:${quest.need.id}`);
+    if (quest.need.cat === 'dishes') {
+      const recipe = recipeDef(quest.need.id);
+      if (recipe) for (const ing of recipe.ingredients) reserved.add(`${ing.cat}:${ing.id}`);
+    }
+  }
+  return reserved;
+}
+
+// Cook whatever dish an active quest needs, if the kitchen is built and
+// there's enough on hand right now -- the only thing that decides what
+// auto-play cooks; it never cooks for profit on its own.
+function tryQuestCook(state) {
+  if (!state.hasKitchen) return null;
+  const q = questState(state);
+  for (const questId of q.active) {
+    const quest = questDef(questId);
+    if (!quest || quest.need.cat !== 'dishes' || canTurnIn(state, quest)) continue;
+    const recipe = recipeDef(quest.need.id);
+    if (recipe && canCook(state, recipe, 1)) return cook(state, recipe.id, 1);
+  }
+  return null;
+}
+
+// Quest business via the founders (marla/sam/pip) -- all three are
+// guaranteed in the home town (region 0,0), so townCenter() gives an exact
+// walk-to target with no exploration needed. Turn-ins go first (finish what's
+// already done before taking on more); "get more if there is more" falls
+// out for free from re-checking fresh every tick once back in town.
+function pendingQuestTurnIn(state) {
+  const q = questState(state);
+  for (const questId of q.active) {
+    const quest = questDef(questId);
+    if (quest && canTurnIn(state, quest)) return quest;
+  }
+  return null;
+}
+
+function pendingQuestAccept(state) {
+  for (const npc of ['marla', 'sam', 'pip']) {
+    const avail = availableFor(state, npc);
+    if (avail.length > 0) return avail[0];
+  }
+  return null;
+}
+
+// Returns null (nothing to do), a plain walking/tired status, or
+// { msg, questEvent: true } for an actual accept/turn-in -- the caller uses
+// questEvent to hold that message on screen instead of letting the next
+// tick immediately overwrite it.
+function tryQuestAction(state) {
+  const turnIn = pendingQuestTurnIn(state);
+  const accept = !turnIn ? pendingQuestAccept(state) : null;
+  if (!turnIn && !accept) return null;
+
+  if (!isInTown(state)) {
+    const home = townCenter(state.seed, 0, 0);
+    const walkMsg = stepToward(state, home.x, home.y);
+    if (walkMsg) return walkMsg;
+  }
+  if (turnIn) return { msg: turnInQuest(state, turnIn.id).msg, questEvent: true };
+  return { msg: acceptQuest(state, accept.id).msg, questEvent: true };
 }
 
 // Run whichever built workshop's recipe has enough materials on hand first
@@ -208,16 +359,35 @@ function tiredOrResult(state, msg) {
 // on a still-walking or blocked tick (the caller should stop and surface
 // that as this tick's result); returns null once the player is already
 // exactly on (tx,ty), meaning the caller should now perform its action.
+//
+// Caches the A* result on state.autoplayPath (transient, not saved -- same
+// role game.js's own walkHomePath plays for H, just living on state since
+// autoplay.js has no object of its own that persists between ticks) and
+// pops one step off it per call, instead of re-running a full search from
+// scratch every single tick. That was fine for the short in-plot walks
+// auto-play used to make, but a quest trip to town can be dozens of tiles
+// each way -- re-searching that every 0.1s made a single such walk cost
+// as much CPU as searching the whole trip that many times over. The cache
+// is invalidated (a fresh search runs) whenever the target changes or the
+// player isn't where the cached path expects them -- e.g. a higher-priority
+// action (a crop needing water) moved them somewhere else in between.
 function stepToward(state, tx, ty) {
   const p = state.player;
-  if (p.x === tx && p.y === ty) return null;
+  if (p.x === tx && p.y === ty) { state.autoplayPath = null; return null; }
   const mounted = Boolean(state.tractor?.mounted);
   if (!mounted && p.energy <= 0) return 'Too tired to walk.';
-  const path = findPath(state.world, p.x, p.y, tx, ty);
-  if (!path || path.length === 0) return 'No path there.';
-  const [nx, ny] = path[0];
-  if (!tryStep(state, nx, ny)) return 'No path there.';
-  return `Walking (${path.length} tile${path.length === 1 ? '' : 's'} to go)...`;
+
+  const cached = state.autoplayPath;
+  const steps = (cached && cached.tx === tx && cached.ty === ty && cached.atX === p.x && cached.atY === p.y)
+    ? cached.steps
+    : findPath(state.world, p.x, p.y, tx, ty);
+  if (!steps || steps.length === 0) { state.autoplayPath = null; return 'No path there.'; }
+
+  const [nx, ny] = steps[0];
+  const remaining = steps.slice(1);
+  if (!tryStep(state, nx, ny)) { state.autoplayPath = null; return 'No path there.'; }
+  state.autoplayPath = remaining.length > 0 ? { tx, ty, atX: nx, atY: ny, steps: remaining } : null;
+  return `Walking (${remaining.length + 1} tile${remaining.length === 0 ? '' : 's'} to go)...`;
 }
 
 const CARDINAL_OFFSETS = [[0, -1], [0, 1], [-1, 0], [1, 0]];
@@ -360,6 +530,13 @@ function tryFarmUpgrade(state, tiles) {
     }
   }
 
+  // Cheap, and unblocks cooking for any quest that wants a dish -- otherwise
+  // tryQuestCook can never do anything for those quests at all.
+  if (!state.hasKitchen && affordable(KITCHEN_COST)) {
+    const res = buyKitchen(state);
+    if (res.ok) return res.msg;
+  }
+
   // Irrigation pays for itself in saved watering energy forever after, so it
   // comes right after tools -- but covering what's already irrigated comes
   // FIRST, ahead of irrigating more: with land expansion continually adding
@@ -455,16 +632,22 @@ function tryFarmUpgrade(state, tiles) {
 // One discrete auto-play action. Priority: mount an owned, fuelled tractor
 // if not already driving it (every field action below then routes through
 // it automatically, same as the player's own field() router), harvest ripe
-// crops, water thirsty ones, process raw materials at any built workshop,
+// crops, water thirsty ones, gather nearby forage (owned land first, wild
+// finds within range too), process raw materials at any built workshop,
 // convert some harvested crop into seed at an owned seed plant if that
-// crop's seed stock has run low, sell whatever's left (holding back
-// anything a workshop could still use), plant into empty tilled ground,
-// till bare owned ground, chop down an owned tree to reclaim more ground
-// once there's nothing left to till, buy more seed when there's nothing
-// left to plant with, spend surplus gold upgrading the farm, and otherwise
-// sleep. Returns
-// { msg, slept } -- `slept` tells the caller whether a day (and thus
-// save-worthy progress) actually passed, same as pressing `z` would.
+// crop's seed stock has run low, cook whatever dish an active quest wants,
+// walk to town and accept/turn in quests with the founders (repeats on its
+// own as long as there's more quest business waiting), sell whatever's left
+// (holding back anything a workshop or active quest could still use), plant
+// into empty tilled ground, till bare owned ground, chop down an owned tree
+// to reclaim more ground once there's nothing left to till, buy more seed
+// when there's nothing left to plant with, spend surplus gold upgrading the
+// farm (now including a kitchen, so quest cooking is never permanently
+// blocked), and otherwise sleep. Returns { msg, slept, questEvent } --
+// `slept` tells the caller whether a day (and thus save-worthy progress)
+// actually passed, same as pressing `z` would; `questEvent` is true only on
+// an actual quest accept/turn-in, so the caller can hold that message on
+// screen instead of letting the next tick immediately overwrite it.
 export function autoPlayStep(state) {
   const p = state.player;
   const tiles = ownedWorkableTiles(state);
@@ -483,16 +666,30 @@ export function autoPlayStep(state) {
   const toWater = nearestTo(p, thirsty);
   if (toWater) return runAt(state, toWater.x, toWater.y, farming.water, 'water');
 
+  const forageMsg = tryGatherForage(state, tiles);
+  if (forageMsg) return tiredOrResult(state, forageMsg);
+
   const processMsg = tryProcess(state);
   if (processMsg) return { msg: processMsg, slept: false };
 
   const seedMsg = tryMakeSeeds(state);
   if (seedMsg) return tiredOrResult(state, seedMsg);
 
+  const cookMsg = tryQuestCook(state);
+  if (cookMsg) return tiredOrResult(state, cookMsg);
+
+  const questResult = tryQuestAction(state);
+  if (questResult) {
+    if (typeof questResult === 'string') return tiredOrResult(state, questResult);
+    return { ...tiredOrResult(state, questResult.msg), questEvent: questResult.questEvent };
+  }
+
   const reservedGoods = reservedForProcessing(state);
+  const reservedQuestGoods = reservedForQuests(state);
   const sellable = (it) => {
     const baseId = it.category === 'forage' ? it.key : farming.decodeCropKey(it.key).id;
-    return !reservedGoods.has(`${it.category}:${baseId}`);
+    const key = `${it.category}:${baseId}`;
+    return !reservedGoods.has(key) && !reservedQuestGoods.has(key);
   };
   if (sellableItems(state).filter(sellable).length > 0) {
     return { msg: sellAllItems(state, sellable).msg, slept: false };
