@@ -207,7 +207,7 @@ Cooking preserves quality: quality ingredients → quality dishes.
 
 | Skill | Gain XP from | Perks |
 |-------|--------------|--------|
-| Farming | Till, plant, water, harvest | +2% max energy per level (compounds); better quality; Lv5 cheaper drought watering; Lv8 cheaper till |
+| Farming | Till, plant, water, harvest, fertilize, chop a tree — by hand or by tractor, same rates either way | +2% max energy per level (compounds); better quality; Lv5 cheaper drought watering; Lv8 cheaper till |
 | Foraging | Gather wild finds (`g`) | Lv3 truffles can appear; Lv5 chance of double gathers |
 
 ---

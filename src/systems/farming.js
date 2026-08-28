@@ -162,6 +162,7 @@ export function fertilize(state) {
   bag[fid] -= 1;
   tile.fertilizer = fid;
   state.world.touch(p.x, p.y);
+  gainXp(state, 'farming', 2);
   return `Applied ${Fertilizers.get(fid).name}.`;
 }
 
