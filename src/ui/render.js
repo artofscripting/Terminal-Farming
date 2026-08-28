@@ -140,7 +140,7 @@ function drawHud(renderer, state, w) {
     ? `  |  Tr ${tr.fuel}/${tr.fuelCap} ${tr.implement}${tr.mounted ? ' (on)' : ''}${tr.auto ? ' auto' : ''}`
     : '';
   const forecast = forecastWeather(state);
-  const line1 = ` Y${c.year} ${cap(c.season)} d${c.day}  |  ${cap(state.weather)} (tomorrow: ${cap(forecast)})  |  ${p.gold}g  |  E ${fmtEnergy(p.energy)}/${p.maxEnergy}${tractorSeg}`;
+  const line1 = ` Y${c.year} ${cap(c.season)} d${c.day}  |  ${cap(state.weather)} (tomorrow: ${cap(forecast)})  |  ${p.gold}g  |  E ${fmtEnergy(p.energy)}/${fmtEnergy(p.maxEnergy)}${tractorSeg}`;
   renderer.text(0, 0, line1, HUD_FG, [24, 26, 30]);
   const seed = p.selectedSeed ? Crops.get(p.selectedSeed)?.name : 'none';
   const seedCount = p.selectedSeed ? count(p.inventory, 'seeds', p.selectedSeed) : 0;
@@ -233,9 +233,12 @@ function cap(s) {
   return s ? s[0].toUpperCase() + s.slice(1) : s;
 }
 
-// Whole numbers show plain; fractional energy (from path travel) shows 1 decimal.
+// Whole numbers show plain; fractional energy (from path travel, or a
+// leveled-up max energy) shows to the nearest 0.01, trimmed of any
+// trailing zero (e.g. 225.3, not 225.30).
 function fmtEnergy(n) {
-  return Number.isInteger(n) ? String(n) : n.toFixed(1);
+  if (Number.isInteger(n)) return String(n);
+  return (Math.round(n * 100) / 100).toString();
 }
 
 export { WARN };

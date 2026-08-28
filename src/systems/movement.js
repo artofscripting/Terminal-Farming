@@ -14,7 +14,7 @@ export function tryStep(state, nx, ny) {
   p.y = ny;
   if (!mounted) {
     const onRoad = state.world.getTile(nx, ny).base === 'road';
-    p.energy = Math.max(0, Math.round((p.energy - (onRoad ? 0.1 : 1)) * 10) / 10);
+    p.energy = Math.max(0, Math.round((p.energy - (onRoad ? 0.1 : 1)) * 100) / 100);
   }
   state.world.unloadFarChunks(p.x, p.y, 3);
   return true;

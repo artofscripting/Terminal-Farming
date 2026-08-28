@@ -368,7 +368,7 @@ export function renderSkills(renderer, state) {
   };
 
   entry('Farming', sk.farming,
-    `+2 max energy/lvl \u00b7 cheaper till Lv8 \u00b7 cheaper drought water Lv5 \u00b7 +${Math.round(farmingYieldBonusChance(state) * 100)}% bonus yield chance`);
+    `+2% max energy/lvl \u00b7 cheaper till Lv8 \u00b7 cheaper drought water Lv5 \u00b7 +${Math.round(farmingYieldBonusChance(state) * 100)}% bonus yield chance`);
   entry('Foraging', sk.foraging,
     `Lv3 unlocks truffles \u00b7 Lv5 chance of double gathers`);
   entry('Trading', sk.trading,
