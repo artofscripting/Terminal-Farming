@@ -1,7 +1,9 @@
 // Auto-play (Z): one farming action every tick, fully autonomous. Each call
 // to autoPlayStep() does exactly one thing -- harvest, water, plant, till,
 // sell, buy seeds, upgrade the farm, or sleep -- picking whatever is most
-// useful right now.
+// useful right now. Never teleports: whenever the next thing to do is more
+// than a tile away, it walks there first (stepToward, one tile per tick,
+// real pathing), the same as if the player had pressed the movement keys.
 import { Crops } from '../content/registry.js';
 import { RANCH_BUILDINGS, ANIMALS, HAY_COST, buildingLevelDef } from '../content/animals.js';
 import { WORKSHOPS, allRecipes } from '../content/workshops.js';
@@ -21,6 +23,8 @@ import {
   installIrrigationPlot, buyWell, hasNearbyWater, IRRIGATION_COST, IRRIGATION_RADIUS, WELL_COST,
 } from './irrigation.js';
 import { toggleMount, tractorField, buyFuel, FUEL_CAN, FUEL_CAN_COST } from './machines.js';
+import { findPath } from './pathfind.js';
+import { tryStep } from './movement.js';
 import * as farming from './farming.js';
 
 const SHOULDER_DAYS = 5; // must match calendar.js's frost shoulder window
@@ -164,49 +168,89 @@ function tractorReady(state) {
   return Boolean(tr && tr.mounted && tr.fuel > 0);
 }
 
-// Runs the chosen field action at (x,y) -- through the tractor (3x3 area,
-// fuel only) when mounted and fuelled, else by hand. If it reports being too
-// tired (hand tools only), sleep instead (same tired-detection idiom
-// autoFarm/autoHarvest already use); tractor failure messages ("Out of
+// Turns a raw action-result string into this tick's { msg, slept } --
+// central so every call site treats "too tired" the same way: sleep instead
+// of reporting the failure, same idiom autoFarm/autoHarvest already used.
+function tiredOrResult(state, msg) {
+  return /tired/i.test(msg) ? { msg: sleep(state), slept: true } : { msg, slept: false };
+}
+
+// One 0.1s-per-tile step toward (tx,ty) via real pathing -- never a
+// teleport, so crossing the farm costs the same energy (or fuel, once
+// mounted) and time it would walking there by hand. Returns a status string
+// on a still-walking or blocked tick (the caller should stop and surface
+// that as this tick's result); returns null once the player is already
+// exactly on (tx,ty), meaning the caller should now perform its action.
+function stepToward(state, tx, ty) {
+  const p = state.player;
+  if (p.x === tx && p.y === ty) return null;
+  const mounted = Boolean(state.tractor?.mounted);
+  if (!mounted && p.energy <= 0) return 'Too tired to walk.';
+  const path = findPath(state.world, p.x, p.y, tx, ty);
+  if (!path || path.length === 0) return 'No path there.';
+  const [nx, ny] = path[0];
+  if (!tryStep(state, nx, ny)) return 'No path there.';
+  return `Walking (${path.length} tile${path.length === 1 ? '' : 's'} to go)...`;
+}
+
+// First walkable tile next to (bx,by) -- for approaching a building (garage,
+// seed plant) rather than trying to path onto it; buildings are never
+// walkable themselves, so pathing straight at one always fails.
+function walkableNeighbor(world, bx, by) {
+  for (const [dx, dy] of [[0, -1], [0, 1], [-1, 0], [1, 0], [-1, -1], [1, -1], [-1, 1], [1, 1]]) {
+    const x = bx + dx;
+    const y = by + dy;
+    if (world.isWalkable(x, y)) return { x, y };
+  }
+  return null;
+}
+
+// Walks to (x,y) one tile at a time if not already there, then runs the
+// chosen field action -- through the tractor (3x3 area, fuel only) when
+// mounted and fuelled, else by hand. Tractor failure messages ("Out of
 // fuel...", "Nothing to X here.") never match "tired", so they fall through
 // as an ordinary non-sleep result and the next tick just re-picks a target.
 function runAt(state, x, y, footAction, tractorAction) {
-  state.player.x = x;
-  state.player.y = y;
+  const walkMsg = stepToward(state, x, y);
+  if (walkMsg) return tiredOrResult(state, walkMsg);
   const msg = tractorReady(state) ? tractorField(state, tractorAction) : footAction(state);
-  return /tired/i.test(msg) ? { msg: sleep(state), slept: true } : { msg, slept: false };
+  return tiredOrResult(state, msg);
 }
 
 // Mount the tractor the moment it's usable -- owned, fuelled, not already
 // mounted, and not raining (toggleMount's own rules) -- so every field
-// action above can start routing through it instead of hand tools. Teleports
-// next to the garage first, the same convention every other auto-play
-// action uses (see tryPlaceWell) rather than simulating a walk there.
+// action above can start routing through it instead of hand tools. Walks to
+// a tile next to the garage first (buildings aren't walkable, so it can't
+// path onto the garage tile itself), then mounts.
 function tryMountTractor(state) {
   const tr = state.tractor;
   if (!tr || !tr.owned || tr.mounted || tr.fuel <= 0 || state.weather === 'rain') return null;
-  state.player.x = tr.garage.x + 1;
-  state.player.y = tr.garage.y;
+  const spot = walkableNeighbor(state.world, tr.garage.x, tr.garage.y);
+  if (!spot) return null;
+  const walkMsg = stepToward(state, spot.x, spot.y);
+  if (walkMsg) return walkMsg;
   return toggleMount(state);
 }
 
 // Irrigate the first owned plot that still has eligible ground and fits the
 // gold floor -- installIrrigationPlot() charges IRRIGATION_COST per tile, so
 // the cost is worked out the same way it does internally before committing.
+// installIrrigationPlot() irrigates the whole plot the player is standing
+// in, not just the tile underfoot, so any walkable tile in the plot works
+// as the walk-to target -- it doesn't have to be one of the eligible tiles
+// counted for cost (those might include an unwalkable rock/tree pocket).
 function tryIrrigate(state, affordable) {
   for (const plotId of state.ownedPlots) {
     let cost = 0;
-    let firstTile = null;
+    let walkTarget = null;
     for (const { x, y } of plotTiles(plotId)) {
       const tile = state.world.getTile(x, y);
-      if (!tile.building && !tile.irrigation) {
-        cost += IRRIGATION_COST;
-        if (!firstTile) firstTile = { x, y };
-      }
+      if (!tile.building && !tile.irrigation) cost += IRRIGATION_COST;
+      if (!walkTarget && state.world.isWalkable(x, y)) walkTarget = { x, y };
     }
-    if (!firstTile || !affordable(cost)) continue;
-    state.player.x = firstTile.x;
-    state.player.y = firstTile.y;
+    if (cost === 0 || !walkTarget || !affordable(cost)) continue;
+    const walkMsg = stepToward(state, walkTarget.x, walkTarget.y);
+    if (walkMsg) return walkMsg;
     return installIrrigationPlot(state);
   }
   return null;
@@ -231,8 +275,8 @@ function tryPlaceWell(state, tiles, affordable) {
     (x - target.x) ** 2 + (y - target.y) ** 2 <= r2));
   if (!spot) return null;
 
-  state.player.x = spot.x;
-  state.player.y = spot.y;
+  const walkMsg = stepToward(state, spot.x, spot.y);
+  if (walkMsg) return walkMsg;
   return buyWell(state);
 }
 
@@ -366,7 +410,7 @@ export function autoPlayStep(state) {
   const tiles = ownedWorkableTiles(state);
 
   const mountMsg = tryMountTractor(state);
-  if (mountMsg) return { msg: mountMsg, slept: false };
+  if (mountMsg) return tiredOrResult(state, mountMsg);
 
   const ripe = tiles.filter(({ tile }) => {
     const def = tile.crop && Crops.get(tile.crop.id);
@@ -459,7 +503,7 @@ export function autoPlayStep(state) {
 
   // Nothing left to farm or buy seed for -- spend surplus gold upgrading.
   const upgradeMsg = tryFarmUpgrade(state, tiles);
-  if (upgradeMsg) return { msg: upgradeMsg, slept: false };
+  if (upgradeMsg) return tiredOrResult(state, upgradeMsg);
 
   // Fully worked and nothing productive to buy -- advance to the next day.
   return { msg: sleep(state), slept: true };

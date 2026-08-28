@@ -18,6 +18,7 @@ import { installIrrigation, installIrrigationPlot, buyWell } from './systems/irr
 import { buyWorkshop, process as runWorkshopRecipe } from './systems/workshops.js';
 import { runCommand } from './systems/console.js';
 import { findPath } from './systems/pathfind.js';
+import { tryStep } from './systems/movement.js';
 import { autoPlayStep } from './systems/autoplay.js';
 import { renderScene } from './ui/render.js';
 import * as menus from './ui/menus.js';
@@ -179,17 +180,7 @@ export class Game {
     const p = this.state.player;
     const mounted = this.state.tractor?.mounted;
     if (!mounted && p.energy <= 0) { this.setStatus('Too tired — sleep (z).'); return false; }
-    const nx = p.x + dx;
-    const ny = p.y + dy;
-    if (!this.state.world.isWalkable(nx, ny)) return false;
-    p.x = nx; p.y = ny;
-    if (!mounted) {
-      const onPath = this.state.world.getTile(nx, ny).base === 'road';
-      const cost = onPath ? 0.1 : 1; // paths are far cheaper to travel
-      p.energy = Math.max(0, Math.round((p.energy - cost) * 10) / 10);
-    }
-    this.state.world.unloadFarChunks(p.x, p.y, 3);
-    return true;
+    return tryStep(this.state, p.x + dx, p.y + dy);
   }
 
   // ---- Walk home (H): path to `state.home`, then auto-step it one tile
