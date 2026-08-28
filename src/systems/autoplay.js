@@ -160,6 +160,28 @@ function nearestTo(p, list) {
   return best;
 }
 
+// Coordinates stepToward() has found genuinely unreachable -- not just far
+// (that's handled by pathfind.js's own budget/heuristic), but truly walled
+// off, which the procedurally-generated terrain can do to a small pocket of
+// otherwise-normal ground (forest tiles roll up to 40% trees per tile,
+// dense enough to occasionally seal a gap-free ring around a few tiles).
+// Filtered out of candidate lists before picking "nearest" so auto-play
+// tries the next-best target instead of retrying the same doomed walk
+// forever. Transient, not saved -- a fresh session just re-discovers the
+// same block once, cheaply, if the terrain is still the same.
+function isBlockedTarget(state, x, y) {
+  return Boolean(state.autoplayBlocked?.has(`${x},${y}`));
+}
+
+function blockTarget(state, x, y) {
+  if (!state.autoplayBlocked) state.autoplayBlocked = new Set();
+  state.autoplayBlocked.add(`${x},${y}`);
+}
+
+function notBlocked(state) {
+  return (t) => !isBlockedTarget(state, t.x, t.y);
+}
+
 // Smaller than spawnForage's own radius-10 spawn area on purpose: this scan
 // runs every tick something higher-priority isn't pending (so potentially
 // every tick of a long quest walk through never-before-seen ground), and
@@ -172,20 +194,59 @@ const FORAGE_SCAN_RADIUS = 6;
 // already scanned for that every tick, so this is free) plus wild forage
 // within a radius of the player -- gather() works anywhere, unowned wilds
 // included, matching how the player can already forage outside the fence.
+// Every tile actually walk-reachable from (px,py), via plain BFS bounded to
+// a `radius` box around the start (so it terminates even inside a sealed
+// pocket, where an unbounded flood-fill would just enumerate the whole
+// pocket anyway -- bounding it just caps the cost). Cheap and single-pass:
+// used to pre-validate a whole batch of forage candidates at once, rather
+// than discovering each one is unreachable individually via a failed
+// findPath (which must exhaust its own much larger search budget to
+// conclude that -- see stepToward/isBlockedTarget for that reactive,
+// last-resort version, kept as a safety net for other target types).
+function locallyReachableSet(world, px, py, radius) {
+  const visited = new Set([`${px},${py}`]);
+  const queue = [[px, py]];
+  let head = 0;
+  while (head < queue.length) {
+    const [x, y] = queue[head++];
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const nx = x + dx;
+      const ny = y + dy;
+      if (Math.abs(nx - px) > radius || Math.abs(ny - py) > radius) continue;
+      const k = `${nx},${ny}`;
+      if (visited.has(k) || !world.isWalkable(nx, ny)) continue;
+      visited.add(k);
+      queue.push([nx, ny]);
+    }
+  }
+  return visited;
+}
+
+// Forest tiles roll up to 40% trees each -- dense enough that a small
+// pocket of ground can end up with no gap-free way out at all. Without
+// this, spawnForage() dropping fresh wild forage inside such a pocket every
+// morning would keep handing tryGatherForage() a brand new unreachable
+// target each day forever, which the reactive blocklist alone can't get
+// ahead of (it only learns a target is bad after already trying it).
 function nearbyForageTiles(state, tiles) {
   const out = [];
   const seen = new Set();
   for (const { x, y, tile } of tiles) {
-    if (tile.forage) { out.push({ x, y }); seen.add(`${x},${y}`); }
+    if (tile.forage && !isBlockedTarget(state, x, y)) { out.push({ x, y }); seen.add(`${x},${y}`); }
   }
   const p = state.player;
+  const reachable = locallyReachableSet(state.world, p.x, p.y, FORAGE_SCAN_RADIUS + 4);
   for (let dx = -FORAGE_SCAN_RADIUS; dx <= FORAGE_SCAN_RADIUS; dx++) {
     for (let dy = -FORAGE_SCAN_RADIUS; dy <= FORAGE_SCAN_RADIUS; dy++) {
       const x = p.x + dx;
       const y = p.y + dy;
       const key = `${x},${y}`;
-      if (seen.has(key)) continue;
-      if (state.world.getTile(x, y).forage) out.push({ x, y });
+      if (seen.has(key) || !reachable.has(key)) continue;
+      const t = state.world.getTile(x, y);
+      // Defensive: spawnForage() shouldn't place forage on a building tile
+      // (fixed separately), but this also guards a save made before that
+      // fix, where one already sits on something unwalkable.
+      if (t.forage && !t.building) out.push({ x, y });
     }
   }
   return out;
@@ -399,11 +460,21 @@ function stepToward(state, tx, ty) {
   const steps = (cached && cached.tx === tx && cached.ty === ty && cached.atX === p.x && cached.atY === p.y)
     ? cached.steps
     : findPath(state.world, p.x, p.y, tx, ty);
-  if (!steps || steps.length === 0) { state.autoplayPath = null; return 'No path there.'; }
+  if (!steps || steps.length === 0) {
+    // Not just "far" (pathfind.js's own heuristic/budget handles long trips
+    // fine) -- a genuine search failure means (tx,ty) is truly walled off
+    // from here. World generation can do that to a small pocket of ground
+    // (dense forest tiles roll up to 40% trees each, enough to occasionally
+    // seal a gap-free ring), so remember it and let target selection skip
+    // it next time instead of retrying the same doomed walk forever.
+    blockTarget(state, tx, ty);
+    state.autoplayPath = null;
+    return 'No path there.';
+  }
 
   const [nx, ny] = steps[0];
   const remaining = steps.slice(1);
-  if (!tryStep(state, nx, ny)) { state.autoplayPath = null; return 'No path there.'; }
+  if (!tryStep(state, nx, ny)) { blockTarget(state, tx, ty); state.autoplayPath = null; return 'No path there.'; }
   state.autoplayPath = remaining.length > 0 ? { tx, ty, atX: nx, atY: ny, steps: remaining } : null;
   return `Walking (${remaining.length + 1} tile${remaining.length === 0 ? '' : 's'} to go)...`;
 }
@@ -517,7 +588,7 @@ function tryPlaceWell(state, tiles, affordable) {
   const r2 = IRRIGATION_RADIUS * IRRIGATION_RADIUS;
   const spot = nearestTo(target, tiles.filter(({ x, y, tile }) =>
     !tile.building && !tile.crop && !tile.irrigation && TILLABLE.includes(tile.base) &&
-    (x - target.x) ** 2 + (y - target.y) ** 2 <= r2));
+    (x - target.x) ** 2 + (y - target.y) ** 2 <= r2).filter(notBlocked(state)));
   if (!spot) return null;
 
   const walkMsg = stepToward(state, spot.x, spot.y);
@@ -676,11 +747,11 @@ export function autoPlayStep(state) {
   const ripe = tiles.filter(({ tile }) => {
     const def = tile.crop && Crops.get(tile.crop.id);
     return def && tile.crop.stage >= def.stages;
-  });
+  }).filter(notBlocked(state));
   const toHarvest = nearestTo(p, ripe);
   if (toHarvest) return runAt(state, toHarvest.x, toHarvest.y, farming.harvest, 'harvest');
 
-  const thirsty = tiles.filter(({ tile }) => tile.tilled && tile.crop && !tile.watered);
+  const thirsty = tiles.filter(({ tile }) => tile.tilled && tile.crop && !tile.watered).filter(notBlocked(state));
   const toWater = nearestTo(p, thirsty);
   if (toWater) return runAt(state, toWater.x, toWater.y, farming.water, 'water');
 
@@ -753,12 +824,13 @@ export function autoPlayStep(state) {
     meetsCropLevel(state, seedDef) &&
     count(p.inventory, 'seeds', seedId) > 0;
   if (canPlantSelected) {
-    const emptyTilled = tiles.filter(({ tile }) => tile.tilled && !tile.crop).filter(notReserved);
+    const emptyTilled = tiles.filter(({ tile }) => tile.tilled && !tile.crop).filter(notReserved).filter(notBlocked(state));
     const toPlant = nearestTo(p, emptyTilled);
     if (toPlant) return runAt(state, toPlant.x, toPlant.y, farming.plant, 'seed', isReserved);
   }
 
-  const untilled = tiles.filter(({ tile }) => !tile.tilled && !tile.crop && TILLABLE.includes(tile.base)).filter(notReserved);
+  const untilled = tiles.filter(({ tile }) => !tile.tilled && !tile.crop && TILLABLE.includes(tile.base))
+    .filter(notReserved).filter(notBlocked(state));
   const toTill = nearestTo(p, untilled);
   if (toTill) return runAt(state, toTill.x, toTill.y, farming.till, 'plow', isReserved);
 

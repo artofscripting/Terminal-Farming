@@ -37,7 +37,7 @@ export function spawnForage(state) {
     const x = state.player.x + dx;
     const y = state.player.y + dy;
     const tile = state.world.getTile(x, y);
-    if (tile.base === 'grass' && !tile.forage && !tile.crop && !tile.tilled) {
+    if (tile.base === 'grass' && !tile.building && !tile.forage && !tile.crop && !tile.tilled) {
       const pick = pool[Math.floor(rand() * pool.length)];
       tile.forage = { id: pick.id };
       state.world.touch(x, y);
