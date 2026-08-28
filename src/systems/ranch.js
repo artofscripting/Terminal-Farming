@@ -98,6 +98,13 @@ function eachAnimal(state) {
   return Object.values(r.buildings).flatMap((b) => b.animals);
 }
 
+// Hay every housed animal eats per day, fed or not -- what a healthy
+// stockpile (auto-play's 8-week reserve, see systems/autoplay.js) is sized
+// against. Zero with no animals owned.
+export function dailyHayNeed(state) {
+  return eachAnimal(state).reduce((sum, a) => sum + animalDef(a.type).feedHay, 0);
+}
+
 // Feed all animals now (consumes hay). Returns a status message.
 export function feedAll(state) {
   const r = ranchState(state);

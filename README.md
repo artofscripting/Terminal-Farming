@@ -62,7 +62,7 @@ All of the above (except movement and `P`) act only **on the tile you're standin
 | `M` | Overview map — your position, owned plots, and nearby towns on one compressed screen |
 | `Y` | Workshops — process a built workshop's recipe (as many as you have materials for) |
 | `H` | Walk home — auto-paths to your house (preferring roads) and travels there one tile at a time, sleeping in place if you run out of energy; press `H` again to cancel |
-| `Z` | Auto-play — runs your farm hands-off, one action every 0.1s: harvests ripe crops, waters, plants, tills bare owned ground, **processes raw materials at any built workshop**, sells what's left (holding back anything a workshop could still turn into a better good), and buys more seed once it runs out (picking whatever crop profits best and still safely matures before the next frost risk). Keeps a **2000g** reserve at all times — it only spends surplus above that floor, in order: tool upgrades, **wells for any irrigated tile that's lost water coverage, irrigation for the rest of each owned plot**, ranch **and workshop** buildings, hay + auto-feed, animals to fill them, and — only once every owned field is fully tilled, planted, and watered *and* there's energy to spare — adjacent land. Sleeps when there's truly nothing left to do; press `Z` again to cancel |
+| `Z` | Auto-play — runs your farm hands-off, one action every 0.1s: harvests ripe crops, waters, plants, tills bare owned ground, **processes raw materials at any built workshop**, sells what's left (holding back anything a workshop could still turn into a better good), and buys more seed once it runs out — a weighted-random mix of whatever safely matures before the next frost risk, favoring profit but never locking onto one monocrop, **so the field fills in as a genuine mix of crops**. Exception: once you're housing animals and hay drops under an **8-week reserve**, it grows **Wheat** exclusively until that's topped back up, since Wheat harvests also leave hay behind. Keeps a **2000g** reserve at all times — it only spends surplus above that floor, in order: tool upgrades, **wells for any irrigated tile that's lost water coverage, irrigation for the rest of each owned plot**, ranch **and workshop** buildings, buying hay to finish the 8-week reserve (once there's no open ground left to grow more Wheat) + auto-feed, animals to fill them, and — only once every owned field is fully tilled, planted, and watered *and* there's energy to spare — adjacent land. Sleeps when there's truly nothing left to do; press `Z` again to cancel |
 | `z` | Sleep (end day, autosave) |
 | `v` / `F5` | Save menu |
 | `F9` | Load menu |
@@ -154,7 +154,7 @@ Each day you walk the farm, spend energy on work, then **`z` sleep**. Overnight:
 | Oak Tree | 112 (~1 year) | 100g | 45g | All year |
 | *+22 more* | 2–7d | 8–35g | 20–100g | See shop |
 
-**27 crops total.** Cycle with **`c`**. The shop (`o` → `1`) lists only **in-season** seeds (keys `1–9`, `0`, `a–z`). Winter favors its own frost-immune crops (beet, garlic, kale, spinach, leek). **Oak Tree** grows in every season (never dies to season-change or frost) but takes a full year (112 watered days) — miss watering 3 nights running and it dies just like any other crop, so irrigation is the practical way to see one through. Feeds the sawmill; **Cotton** feeds the cotton gin (see Workshops below).
+**27 crops total.** Cycle with **`c`**. The shop (`o` → `1`) lists only **in-season** seeds (keys `1–9`, `0`, `a–z`). Winter favors its own frost-immune crops (beet, garlic, kale, spinach, leek). **Oak Tree** grows in every season (never dies to season-change or frost) but takes a full year (112 watered days) — miss watering 3 nights running and it dies just like any other crop, so irrigation is the practical way to see one through. Feeds the sawmill; **Cotton** feeds the cotton gin (see Workshops below). **Wheat** threshes into grain (the sellable crop item) *and* leaves behind harvestable **hay** (+2 per unit, credited straight to your ranch hay stock on harvest) — it's the only way to grow your own animal feed instead of buying it.
 
 **Market prices drift** day to day, ±5% per item (seeds and sell prices alike) — watch for `▲`/`▼` next to a price in the shop, plus a tiny 5-day trend bar (e.g. `▅▁▇▅▇`) so you can see whether a price is climbing or about to dip.
 
@@ -254,7 +254,7 @@ Maintenance and fuel matter — an empty tank stops work.
 
 A building's slots are a shared pool across every animal it houses — a Barn can mix cows and goats in any combination up to its slot count. Each building has **3 upgrade levels** (buy the level-1 building, then upgrade it further from the ranch shop) — a Coop goes 4 → 7 → 12 slots, Barn 3 → 6 → 10, Hive 3 → 6 → 10, at rising gold cost per tier.
 
-- Buy **hay** in the ranch shop submenu.
+- Buy **hay** in the ranch shop submenu, or grow your own — harvesting **Wheat** leaves hay behind (see Crops above).
 - Use **`;`** to feed or enable **auto-feed**.
 - Care streaks improve product quality over consecutive fed days.
 - Collect products from inventory after overnight production (sold in shop `2`).

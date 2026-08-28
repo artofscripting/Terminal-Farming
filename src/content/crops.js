@@ -3,7 +3,9 @@
 export const CROPS = [
   { id: 'turnip',  name: 'Turnip',  seasons: ['spring', 'fall'],   daysWatered: 3, stages: 3, seedCost: 10, sellBase: 25, glyphGrow: 't', glyphRipe: 'Y', color: '#a0d060', colorRipe: '#e0f070' },
   { id: 'potato',  name: 'Potato',  seasons: ['spring', 'summer'], daysWatered: 4, stages: 4, seedCost: 15, sellBase: 40, glyphGrow: 'p', glyphRipe: 'P', color: '#b09050', colorRipe: '#d8b060' },
-  { id: 'wheat',   name: 'Wheat',   seasons: ['summer', 'fall'],   daysWatered: 5, stages: 5, seedCost: 20, sellBase: 55, glyphGrow: 'w', glyphRipe: 'W', color: '#c0b040', colorRipe: '#f0e060' },
+  // hayYield: threshed straw left over from the grain also feeds animals --
+  // see farming.js harvest(), which credits it straight to ranch hay.
+  { id: 'wheat',   name: 'Wheat',   seasons: ['summer', 'fall'],   daysWatered: 5, stages: 5, seedCost: 20, sellBase: 55, glyphGrow: 'w', glyphRipe: 'W', color: '#c0b040', colorRipe: '#f0e060', hayYield: 2 },
   { id: 'carrot',  name: 'Carrot',  seasons: ['spring', 'fall'],   daysWatered: 3, stages: 3, seedCost: 12, sellBase: 30, glyphGrow: 'c', glyphRipe: 'C', color: '#d08030', colorRipe: '#f0a040' },
   { id: 'tomato',  name: 'Tomato',  seasons: ['summer'],           daysWatered: 4, stages: 4, seedCost: 18, sellBase: 45, glyphGrow: 'm', glyphRipe: 'M', color: '#c04040', colorRipe: '#f05050' },
   { id: 'corn',    name: 'Corn',    seasons: ['summer', 'fall'],   daysWatered: 6, stages: 6, seedCost: 25, sellBase: 70, glyphGrow: 'n', glyphRipe: 'N', color: '#d0c050', colorRipe: '#f0e070', minFarmingLevel: 2 },

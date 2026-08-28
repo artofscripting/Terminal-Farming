@@ -4,6 +4,7 @@ import { add, remove, count } from './inventory.js';
 import { gainXp, meetsCropLevel, farmingYieldBonusChance } from './skills.js';
 import { addStat } from './stats.js';
 import { seasonIndex } from '../state/gameState.js';
+import { ranchState } from './ranch.js';
 
 // Tiles affected by a tool area, centered on the player.
 function areaTiles(area, cx, cy) {
@@ -171,6 +172,11 @@ export function harvest(state) {
     gainXp(state, 'farming', 3);
     did += qty;
     msg = `Harvested ${qty}x ${def.name}${quality ? ' ' + '★'.repeat(quality) : ''}.`;
+    if (def.hayYield) {
+      const hayGained = def.hayYield * qty;
+      ranchState(state).hay += hayGained;
+      msg += ` +${hayGained} hay.`;
+    }
   }
   if (!did) return 'Nothing ripe to harvest here.';
   spend(state, t.energy);

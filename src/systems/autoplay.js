@@ -13,6 +13,7 @@ import { sleep } from './calendar.js';
 import { DAYS_PER_SEASON } from '../state/gameState.js';
 import {
   buyRanchBuilding, upgradeRanchBuilding, nextRanchLevel, buyAnimal, buyHay, toggleAutoFeed, ranchSummary,
+  dailyHayNeed,
 } from './ranch.js';
 import { buyWorkshop, workshopState, maxRuns, process as runWorkshopRecipe } from './workshops.js';
 import { nextExpansionPlot, expandFarm, expandPrice } from './plotmarket.js';
@@ -24,7 +25,8 @@ import * as farming from './farming.js';
 const SHOULDER_DAYS = 5; // must match calendar.js's frost shoulder window
 const TILLABLE = ['grass', 'field', 'sand'];
 const UPGRADE_GOLD_THRESHOLD = 2000; // start spending surplus gold on the farm past this
-const HAY_RESERVE = 20; // keep at least this much hay on hand once ranching
+const HAY_RESERVE_DAYS = 56; // 8 weeks -- also exactly Wheat's fall->winter->spring off-season gap
+const SEED_BATCH_SIZE = 8; // cap per buy so a restock re-rolls variety often, instead of one monocrop wave filling the whole field
 
 // How many of the current season's remaining days are free of frost risk,
 // starting from today. Spring's first days and fall's last days are frost
@@ -36,25 +38,68 @@ function safeDaysRemaining(season, day) {
   return Math.max(0, DAYS_PER_SEASON - day + 1);
 }
 
-// The in-season, level-eligible crop with the best profit-per-growing-day
-// that will still fully mature inside the frost-safe window. Null if nothing
-// currently fits (e.g. too close to a frost shoulder to safely start anything).
-export function optimalSeed(state) {
+// In-season, level-eligible crops that will still fully mature inside the
+// frost-safe window, each scored by profit-per-growing-day. Growth time is
+// `stages` (each watered day advances one stage) -- `daysWatered` is cosmetic
+// flavor text the growth engine never reads, so both the safety cutoff and
+// the scoring divisor key off `stages` to match what actually happens on the
+// ground. Empty once too close to a frost shoulder to safely start anything.
+function seasonalCandidates(state) {
   const remaining = safeDaysRemaining(state.calendar.season, state.calendar.day);
-  if (remaining <= 0) return null;
-  const candidates = Crops.all().filter((c) =>
-    c.seasons.includes(state.calendar.season) &&
-    c.daysWatered <= remaining &&
-    meetsCropLevel(state, c));
-  if (candidates.length === 0) return null;
+  if (remaining <= 0) return [];
+  return Crops.all()
+    .filter((c) => c.seasons.includes(state.calendar.season) && c.stages <= remaining && meetsCropLevel(state, c))
+    .map((c) => ({ crop: c, score: (c.sellBase - seedPrice(state, c.id)) / c.stages }));
+}
 
-  let best = candidates[0];
-  let bestScore = -Infinity;
-  for (const c of candidates) {
-    const score = (c.sellBase - seedPrice(state, c.id)) / c.daysWatered;
-    if (score > bestScore) { bestScore = score; best = c; }
+// The single best-scoring safe crop right now. Null if nothing fits.
+export function optimalSeed(state) {
+  const candidates = seasonalCandidates(state);
+  if (candidates.length === 0) return null;
+  return candidates.reduce((best, c) => (c.score > best.score ? c : best)).crop;
+}
+
+// Weighted-random pick among this season's safe, eligible crops, biased
+// toward higher profit-per-day but not locked to a single "best" choice --
+// this is what auto-play actually plants with, so the field fills in as a
+// mixed patchwork over restocks instead of one monocrop wave after another.
+// Weight floors at a small epsilon so a loss-leading crop (Oak, grown for
+// its sawmill output rather than its raw sell price) can still occasionally
+// come up rather than never appearing, and the roll never divides by a
+// zero/negative total.
+function pickVariedSeed(state) {
+  const candidates = seasonalCandidates(state);
+  if (candidates.length === 0) return null;
+  const weights = candidates.map((c) => Math.max(0.05, c.score));
+  const total = weights.reduce((a, b) => a + b, 0);
+  let roll = Math.random() * total;
+  for (let i = 0; i < candidates.length; i++) {
+    roll -= weights[i];
+    if (roll <= 0) return candidates[i].crop;
   }
-  return best;
+  return candidates[candidates.length - 1].crop;
+}
+
+// What auto-play should plant next when it needs to restock seed. Normally
+// the weighted-random variety pick above -- except once animals are housed
+// and the hay stockpile has dropped under an 8-week buffer, in which case
+// Wheat (the only hay source) takes over completely until the buffer is
+// rebuilt, since keeping animals fed outranks crop variety. Wheat only
+// grows in summer/fall; the 8-week target spans exactly the fall->winter->
+// spring gap when it can't be, so a healthy summer/fall stockpile coasts
+// through. Falls back to the varied pick outside wheat season (or once the
+// buffer is full) -- tryFarmUpgrade's buyHay step is the remaining safety
+// net for when there's no open ground left to grow more of anything.
+function pickSeedToPlant(state) {
+  const need = dailyHayNeed(state);
+  if (need > 0) {
+    const wheat = Crops.get('wheat');
+    const remaining = safeDaysRemaining(state.calendar.season, state.calendar.day);
+    const wheatEligible = wheat.seasons.includes(state.calendar.season) &&
+      wheat.stages <= remaining && meetsCropLevel(state, wheat);
+    if (wheatEligible && ranchSummary(state).hay < need * HAY_RESERVE_DAYS) return wheat;
+  }
+  return pickVariedSeed(state);
 }
 
 function ownedWorkableTiles(state) {
@@ -228,9 +273,14 @@ function tryFarmUpgrade(state, tiles) {
   const anyRanchBuilt = RANCH_BUILDINGS.some((b) => summary.buildings[b.id] >= 0);
   if (anyRanchBuilt) {
     if (!summary.autoFeed) return toggleAutoFeed(state);
-    if (summary.hay < HAY_RESERVE) {
+    // Growing Wheat (pickSeedToPlant, in the main loop) is the primary way
+    // this reserve gets refilled -- this is just the fallback for when
+    // there's no open ground left to grow more of anything, or it's a
+    // wheat-less season and the summer/fall stockpile wasn't enough.
+    const hayTarget = dailyHayNeed(state) * HAY_RESERVE_DAYS;
+    if (summary.hay < hayTarget) {
       const spendable = p.gold - UPGRADE_GOLD_THRESHOLD;
-      const qty = Math.min(10, Math.floor(spendable / HAY_COST));
+      const qty = Math.min(10, hayTarget - summary.hay, Math.floor(spendable / HAY_COST));
       if (qty > 0) {
         const res = buyHay(state, qty);
         if (res.ok) return res.msg;
@@ -343,15 +393,18 @@ export function autoPlayStep(state) {
 
   // Nothing left to work with hand tools -- buy seed for whatever open
   // ground remains, if a safe crop and the gold for it are both available.
+  // Batch size is capped (not "enough for the whole field") so the next
+  // restock re-rolls pickSeedToPlant's variety/hay check again soon, rather
+  // than one choice claiming every open tile in a single purchase.
   const plantable = buildable.filter(notReserved);
   if (plantable.length > 0) {
-    const best = optimalSeed(state);
-    if (best) {
-      const price = seedPrice(state, best.id);
-      const qty = Math.min(plantable.length, Math.floor(p.gold / price));
+    const chosen = pickSeedToPlant(state);
+    if (chosen) {
+      const price = seedPrice(state, chosen.id);
+      const qty = Math.min(plantable.length, SEED_BATCH_SIZE, Math.floor(p.gold / price));
       if (qty > 0) {
-        p.selectedSeed = best.id;
-        return { msg: buySeed(state, best.id, qty).msg, slept: false };
+        p.selectedSeed = chosen.id;
+        return { msg: buySeed(state, chosen.id, qty).msg, slept: false };
       }
     }
   }
