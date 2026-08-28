@@ -24,6 +24,7 @@ import { keyLabel, lookupKey, lookupMapGlyph } from './keyReference.js';
 import { count as invCount, countBase } from '../systems/inventory.js';
 import { SEED_PLANT_COST, SEEDS_PER_CROP_MIN, SEEDS_PER_CROP_MAX, seedPlantState } from '../systems/seedplant.js';
 import { INFO_COMMANDS, CHEAT_COMMANDS } from '../systems/console.js';
+import { diaryEntries } from '../systems/diary.js';
 import { plotBounds } from '../world/plots.js';
 import { townCenter, REGION_TILES } from '../world/structures.js';
 
@@ -408,6 +409,76 @@ export function renderStats(renderer, state) {
   }
 
   renderer.text(2, renderer.height - 1, 'q back', DIM, PANEL_BG);
+}
+
+// Harvest Diary: one day per screen, most recent first. `dayIndex` 0 is
+// yesterday (the day sleep() most recently closed); higher indices scroll
+// further back in time. n/p page through it the same way Help's pages do.
+export function renderDiary(renderer, state, dayIndex) {
+  const entries = diaryEntries(state);
+  if (entries.length === 0) {
+    panel(renderer, 'Harvest Diary');
+    renderer.text(3, 3, 'No entries yet — sleep once (z) to record your first day.', DIM, PANEL_BG);
+    return;
+  }
+  const idx = Math.max(0, Math.min(entries.length - 1, dayIndex));
+  const e = entries[idx];
+  panel(renderer, `Harvest Diary — Y${e.year} ${cap(e.season)} d${e.day}  (n older / p newer, ${idx + 1}/${entries.length})`);
+
+  let y = 3;
+  const line = (text, color = TEXT) => { renderer.text(3, y, text, color, PANEL_BG); y += 1; };
+
+  line(`Weather: ${cap(e.weather)}`);
+  const net = e.goldEnd - e.goldStart;
+  line(`Gold: ${e.goldStart}g -> ${e.goldEnd}g (${net >= 0 ? '+' : ''}${net}g)`);
+
+  const totalDied = e.deaths.frost + e.deaths.season + e.deaths.drought;
+  if (totalDied > 0) {
+    const reasons = [];
+    if (e.deaths.frost) reasons.push(`${e.deaths.frost} to frost`);
+    if (e.deaths.drought) reasons.push(`${e.deaths.drought} from lack of water`);
+    if (e.deaths.season) reasons.push(`${e.deaths.season} to the season changing`);
+    line(`Crop deaths: ${totalDied} (${reasons.join(', ')})`, [230, 120, 120]);
+  } else {
+    line('Crop deaths: none', DIM);
+  }
+
+  y++;
+  const harvestedIds = Object.keys(e.harvested);
+  if (harvestedIds.length > 0) {
+    line('Harvested:', TITLE);
+    for (const id of harvestedIds) {
+      line(`  ${(Crops.get(id)?.name || id).padEnd(16)} x${e.harvested[id]}`);
+    }
+  } else {
+    line('Harvested: nothing', DIM);
+  }
+
+  y++;
+  const soldNames = Object.keys(e.sold);
+  if (soldNames.length > 0) {
+    line('Sold:', TITLE);
+    for (const name of soldNames) {
+      const s = e.sold[name];
+      line(`  ${name.padEnd(16)} x${s.qty} for ${s.gold}g`);
+    }
+  } else {
+    line('Sold: nothing', DIM);
+  }
+
+  y++;
+  const boughtNames = Object.keys(e.bought);
+  if (boughtNames.length > 0) {
+    line('Bought:', TITLE);
+    for (const name of boughtNames) {
+      const b = e.bought[name];
+      line(`  ${name.padEnd(16)} x${b.qty} for ${b.gold}g`);
+    }
+  } else {
+    line('Bought: nothing', DIM);
+  }
+
+  renderer.text(2, renderer.height - 1, 'n/p to scroll, q/Esc back', DIM, PANEL_BG);
 }
 
 // Compressed overview: your position, owned plots, and nearby towns on one

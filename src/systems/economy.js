@@ -7,6 +7,7 @@ import { decodeCropKey } from './farming.js';
 import { gainXp, seedDiscount, meetsCropLevel } from './skills.js';
 import { addStat } from './stats.js';
 import { rngAt } from '../engine/rng.js';
+import { logSale, logPurchase } from './diary.js';
 import { SEASONS, DAYS_PER_SEASON } from '../state/gameState.js';
 
 // Cheap string -> int hash so item ids can seed the market RNG alongside
@@ -137,6 +138,7 @@ export function buySeed(state, cropId, qty = 1) {
   if (state.player.gold < cost) return { ok: false, msg: `Need ${cost}g.` };
   state.player.gold -= cost;
   add(state.player.inventory, 'seeds', cropId, qty);
+  logPurchase(state, `${def.name} seed`, qty, cost);
   return { ok: true, msg: `Bought ${qty}x ${def.name} seed (-${cost}g).` };
 }
 
@@ -208,6 +210,8 @@ export function sellItem(state, category, key, qty = 1) {
   state.player.gold += price;
   const achievement = addStat(state, 'goldEarned', price);
   gainXp(state, 'trading', Math.min(10, Math.max(1, Math.round(price / 20))));
+  const baseId = category === 'forage' ? key : decodeCropKey(key).id;
+  logSale(state, itemName(category, baseId), n, price); // quality stars aggregated into one diary line per item
   const msg = `Sold ${n}x ${itemName(category, key)} for ${price}g.`;
   return { ok: true, msg: achievement ? `${msg} ${achievement}` : msg };
 }

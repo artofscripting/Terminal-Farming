@@ -5,6 +5,7 @@ import { gainXp, meetsCropLevel, farmingYieldBonusChance } from './skills.js';
 import { addStat } from './stats.js';
 import { seasonIndex } from '../state/gameState.js';
 import { ranchState } from './ranch.js';
+import { logHarvest } from './diary.js';
 
 // Tiles affected by a tool area, centered on the player.
 function areaTiles(area, cx, cy) {
@@ -209,6 +210,7 @@ export function harvest(state) {
     }
     state.world.touch(x, y);
     gainXp(state, 'farming', 3);
+    logHarvest(state, def.id, qty);
     did += qty;
     msg = `Harvested ${qty}x ${def.name}${quality ? ' ' + '★'.repeat(quality) : ''}.`;
     if (def.regrowDays) msg += ` (regrows in ${def.regrowDays}d)`;

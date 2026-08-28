@@ -86,6 +86,7 @@ export class Game {
       case 'festival': return this.keyFestival(k);
       case 'skills': return this.keySkills(k);
       case 'stats': return this.keyStats(k);
+      case 'diary': return this.keyDiary(k);
       case 'map': return this.keyMap(k);
       case 'workshops': return this.keyWorkshops(k);
       case 'seedplant': return this.keySeedPlant(k);
@@ -141,6 +142,7 @@ export class Game {
       case 'f': this.mode = 'festival'; break;
       case 'K': this.mode = 'skills'; break;
       case 'S': this.mode = 'stats'; break;
+      case 'D': this.mode = 'diary'; this.ui.diaryIndex = 0; break;
       case 'M': this.mode = 'map'; break;
       case 'Y': this.mode = 'workshops'; break;
       case 'C': this.openSeedPlant(); break;
@@ -450,6 +452,16 @@ export class Game {
     this.render();
   }
 
+  // ---- Harvest Diary ---- diaryIndex 0 = yesterday; n scrolls further
+  // back in time (higher index), p scrolls forward toward today.
+  keyDiary(k) {
+    if (k === 'q' || k === 'escape' || k === 'D') { this.mode = 'game'; this.render(); return; }
+    const max = Math.max(0, (this.state.diary?.length || 0) - 1);
+    if (k === 'n') this.ui.diaryIndex = Math.min(max, (this.ui.diaryIndex || 0) + 1);
+    else if (k === 'p') this.ui.diaryIndex = Math.max(0, (this.ui.diaryIndex || 0) - 1);
+    this.render();
+  }
+
   // ---- Overview map ----
   keyMap(k) {
     if (k === 'q' || k === 'escape' || k === 'M') this.mode = 'game';
@@ -591,6 +603,7 @@ export class Game {
     if (this.mode === 'festival') { menus.renderFestival(this.renderer, this.state); return this.flush(); }
     if (this.mode === 'skills') { menus.renderSkills(this.renderer, this.state); return this.flush(); }
     if (this.mode === 'stats') { menus.renderStats(this.renderer, this.state); return this.flush(); }
+    if (this.mode === 'diary') { menus.renderDiary(this.renderer, this.state, this.ui.diaryIndex || 0); return this.flush(); }
     if (this.mode === 'map') { menus.renderMap(this.renderer, this.state); return this.flush(); }
     if (this.mode === 'workshops') { this.ui.workshopKeys = menus.renderWorkshops(this.renderer, this.state); return this.flush(); }
     if (this.mode === 'seedplant') {

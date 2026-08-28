@@ -9,6 +9,7 @@ import { laborOvernight } from './labor.js';
 import { resetDailyGifts } from './town.js';
 import { hasNearbyWater } from './irrigation.js';
 import { addStat } from './stats.js';
+import { closeDay } from './diary.js';
 
 const WEATHERS = ['sunny', 'sunny', 'rain', 'drought', 'frost'];
 const SHOULDER_DAYS = 5; // frost's reach into the start of spring / end of fall
@@ -111,6 +112,10 @@ function growTile(state, tile, rand, x, y) {
 // End the day: grow crops, restore energy, roll weather, advance the calendar.
 export function sleep(state) {
   const rand = rngAt(state.seed ^ 0xbeef, state.calendar.year, state.calendar.day);
+  // Snapshot the day that's about to end -- calendar.js/state.weather below
+  // get overwritten with tomorrow's values before this function returns.
+  const endingDay = { year: state.calendar.year, season: state.calendar.season, day: state.calendar.day };
+  const endingWeather = state.weather;
 
   const deaths = { frost: 0, season: 0, drought: 0 };
   for (const plotId of state.ownedPlots) {
@@ -140,6 +145,7 @@ export function sleep(state) {
   const routed = autoRoute(state);
   const labor = laborOvernight(state);
   const produced = ranchOvernight(state);
+  closeDay(state, { ...endingDay, weather: endingWeather, deaths });
   let msg = `Day ${c.day}, ${c.season} (Year ${c.year}). Weather: ${state.weather}.`;
   if (routed > 0) msg += ` Tractor worked ${routed} tile${routed === 1 ? '' : 's'}.`;
   if (labor.worked > 0) msg += ` Workers did ${labor.worked} task${labor.worked === 1 ? '' : 's'}.`;

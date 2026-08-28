@@ -6,6 +6,7 @@ import { ownsTile } from './plotmarket.js';
 import { plotIdAt, plotTiles } from '../world/plots.js';
 import { ranchState } from './ranch.js';
 import { gainXp } from './skills.js';
+import { logHarvest } from './diary.js';
 
 export const FUEL_CAN = 20;
 export const FUEL_CAN_COST = 50;
@@ -190,6 +191,7 @@ function workTile(state, action, x, y) {
     }
     state.world.touch(x, y);
     gainXp(state, 'farming', 3);
+    logHarvest(state, def.id, 1);
     return true;
   }
   return false;

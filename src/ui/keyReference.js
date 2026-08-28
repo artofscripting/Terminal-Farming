@@ -22,7 +22,7 @@ export const KEY_MEANINGS = {
   k: [['Game (vim keys)', 'Move up'], ['Labor board', 'Hire a Generalist']],
   l: [['Game (vim keys)', 'Move right']],
   t: [['Game (on foot)', 'Till soil'], ['Game (tractor mounted)', 'Plow with the tractor (3x3, uses fuel)'], ['Town', 'Turn in a ready quest']],
-  p: [['Game (on foot)', 'Plant the selected seed'], ['Game (tractor mounted)', 'Seed with the tractor (3x3, uses fuel)']],
+  p: [['Game (on foot)', 'Plant the selected seed'], ['Game (tractor mounted)', 'Seed with the tractor (3x3, uses fuel)'], ['Help (browsing pages)', 'Previous help page'], ['Harvest Diary', 'Scroll forward toward today']],
   e: [['Game (on foot)', 'Water'], ['Game (tractor mounted)', 'Water with the tractor (3x3, uses fuel)'], ['Kitchen', 'Toggle cook / eat mode']],
   r: [['Game (anywhere)', 'Harvest ripe crop(s)'], ['Game (tractor mounted)', 'Harvest with the tractor (3x3, uses fuel)']],
   R: [['Game', 'Auto-harvest every ripe crop in the connected field']],
@@ -50,7 +50,7 @@ export const KEY_MEANINGS = {
   Y: [['Game', 'Open Workshops: process any built workshop’s recipe'], ['Workshops', 'Close Workshops']],
   C: [['Game', 'Open the Seed Plant: convert a harvested crop into seed (stand next to it)'], ['Seed Plant', 'Close the Seed Plant']],
   m: [['Game', 'Mount / dismount the tractor next to the garage'], ['Kitchen', 'Toggle x1 / x5 cook batch size']],
-  n: [['Game', 'Cycle the tractor\u2019s overnight auto-route implement'], ['Help (browsing pages)', 'Next help page'], ['Pause / confirm dialogs', 'Cancel / No']],
+  n: [['Game', 'Cycle the tractor\u2019s overnight auto-route implement'], ['Help (browsing pages)', 'Next help page'], ['Harvest Diary', 'Scroll further back in time'], ['Pause / confirm dialogs', 'Cancel / No']],
   y: [['Game', 'Toggle the tractor\u2019s overnight auto-route'], ['Pause / confirm dialogs', 'Confirm / Yes']],
   ',': [['Game', 'Cycle the tractor\u2019s overnight auto-route zone']],
   z: [['Game', 'Sleep (end the day, autosave)'], ['Labor board', "Assign the nearest worker's zone to your plot"]],
@@ -75,7 +75,7 @@ export const KEY_MEANINGS = {
   '8': [['Shop', 'Open the ranch shop']],
   '9': [['Shop', 'Buy kitchen']],
   '0': [['Shop', 'Open the Workshops submenu (buy sawmill, carpenter, cotton gin, spinner, weaver, cloth maker)']],
-  D: [['Shop', "Buy today's traveling-merchant deal (if one is available)"]],
+  D: [['Game', 'Open the Harvest Diary'], ['Harvest Diary', 'Close the Harvest Diary'], ['Shop', "Buy today's traveling-merchant deal (if one is available)"]],
 };
 
 // A key's label as shown in the lookup panel title.

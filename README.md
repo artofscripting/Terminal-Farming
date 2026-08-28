@@ -60,6 +60,7 @@ All of the above (except movement and `P`) act only **on the tile you're standin
 | `i` | Inventory |
 | `K` | Skills |
 | `S` | Lifetime stats & achievements (gold earned, crops harvested, days played, ...) |
+| `D` | Harvest Diary — one day per screen: weather, crop deaths, harvested/sold/bought, and the day's net gold. `n`/`p` scroll further back/forward in time |
 | `M` | Overview map — your position, owned plots, and nearby towns on one compressed screen |
 | `Y` | Workshops — process a built workshop's recipe (as many as you have materials for) |
 | `C` | Seed Plant — convert harvested crops into seeds of the same crop (4-6 seeds per unit, `m` cycles the batch size x1/x5/x10/x25) |
@@ -374,6 +375,12 @@ On festival day you can visit, enter a **crop contest**, and buy a **seed booth*
 | `F9` / title `2` | Load |
 
 Saves live under the `saves/` folder as JSON. Older save versions migrate forward when loaded.
+
+---
+
+## Harvest Diary (`D`)
+
+Every day that ends (`z`, or auto-play sleeping on its own) is recorded permanently: that day's weather, any crop deaths (with cause), everything harvested, everything sold, and everything bought (currently seed purchases — the recurring "harvest economy" transaction) with quantities and gold. **`D`** opens it one day at a time, most recent first; **`n`** scrolls further back in time, **`p`** scrolls forward toward today. Survives save/load. The log is capped at the most recent 200 days so a very long save doesn't grow forever.
 
 ---
 
