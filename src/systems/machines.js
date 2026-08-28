@@ -214,25 +214,35 @@ export function tractorField(state, action) {
   return `Tractor ${action}: ${worked} tile${worked === 1 ? '' : 's'}. Fuel ${tr.fuel}/${tr.fuelCap}.`;
 }
 
-// Manual whole-plot pass with whatever implement is currently attached
-// (tr.implement -- the same value `n` cycles and autoRoute uses overnight).
-// Unlike tractorField's 3x3 area around the player, this works every tile
-// in the plot the player is standing in, right now, in one keypress.
-export function tractorFieldPlot(state) {
+// Manual (or auto-play-driven) whole-plot pass. `action` defaults to
+// whatever implement is currently attached (tr.implement -- the same value
+// `n` cycles and autoRoute uses overnight) so the player's F key needs no
+// argument; auto-play passes an explicit action instead of touching
+// tr.implement, so it can't clobber the player's own overnight auto-route
+// setting. `skip(x,y)`, if given, excludes specific tiles -- auto-play uses
+// it so a whole-plot plant pass can't seed over ground it's holding back
+// for a pending building or well (findFreeOwnedTile only checks
+// !tile.crop, not !tile.tilled, so till/water/harvest never need this, but
+// planting would otherwise defeat that reservation). Unlike tractorField's
+// 3x3 area around the player, this works every tile in the plot the player
+// is standing in, in one call.
+export function tractorFieldPlot(state, action, skip) {
   const tr = tractorState(state);
   if (!tr.mounted) return 'Mount the tractor first.';
+  const impl = action || tr.implement;
   const plotId = plotIdAt(state.player.x, state.player.y);
   let worked = 0;
   for (const { x, y } of plotTiles(plotId)) {
     if (tr.fuel <= 0) break;
-    if (workTile(state, tr.implement, x, y)) {
+    if (skip && skip(x, y)) continue;
+    if (workTile(state, impl, x, y)) {
       tr.fuel -= 1;
       worked += 1;
     }
   }
   if (tr.fuel <= 0 && worked === 0) return 'Out of fuel (buy a fuel can, shop 7).';
-  if (worked === 0) return `Nothing to ${tr.implement} in this plot.`;
-  return `Tractor ${tr.implement} (whole plot): ${worked} tile${worked === 1 ? '' : 's'}. Fuel ${tr.fuel}/${tr.fuelCap}.`;
+  if (worked === 0) return `Nothing to ${impl} in this plot.`;
+  return `Tractor ${impl} (whole plot): ${worked} tile${worked === 1 ? '' : 's'}. Fuel ${tr.fuel}/${tr.fuelCap}.`;
 }
 
 // Overnight: run the selected implement across the auto zone while fuelled.

@@ -22,7 +22,7 @@ import { nextExpansionPlot, expandFarm, expandPrice } from './plotmarket.js';
 import {
   installIrrigationPlot, buyWell, hasNearbyWater, IRRIGATION_COST, IRRIGATION_RADIUS, WELL_COST,
 } from './irrigation.js';
-import { toggleMount, tractorField, buyFuel, FUEL_CAN, FUEL_CAN_COST } from './machines.js';
+import { toggleMount, tractorFieldPlot, buyFuel, FUEL_CAN, FUEL_CAN_COST } from './machines.js';
 import { convertToSeeds, SEEDS_PER_CROP_MIN, SEEDS_PER_CROP_MAX } from './seedplant.js';
 import { findPath } from './pathfind.js';
 import { tryStep } from './movement.js';
@@ -239,14 +239,21 @@ function walkableNeighbor(world, bx, by, offsets = ALL_8_OFFSETS) {
 }
 
 // Walks to (x,y) one tile at a time if not already there, then runs the
-// chosen field action -- through the tractor (3x3 area, fuel only) when
-// mounted and fuelled, else by hand. Tractor failure messages ("Out of
-// fuel...", "Nothing to X here.") never match "tired", so they fall through
-// as an ordinary non-sleep result and the next tick just re-picks a target.
-function runAt(state, x, y, footAction, tractorAction) {
+// chosen field action -- through the tractor (whole plot, fuel only) when
+// mounted and fuelled, else by hand. Whole-plot instead of just a 3x3
+// splash: once the tractor is already headed to a tile with a specific job,
+// it may as well clear every other eligible tile in that same plot in the
+// same pass rather than needing a separate walk+call per tile. `skip`, if
+// given, excludes specific tiles from the tractor pass (see tryFarmUpgrade's
+// tile-reservation set) -- irrelevant for hand tools, which only ever touch
+// the one tile the player is standing on anyway. Tractor failure messages
+// ("Out of fuel...", "Nothing to X here.") never match "tired", so they
+// fall through as an ordinary non-sleep result and the next tick just
+// re-picks a target.
+function runAt(state, x, y, footAction, tractorAction, skip) {
   const walkMsg = stepToward(state, x, y);
   if (walkMsg) return tiredOrResult(state, walkMsg);
-  const msg = tractorReady(state) ? tractorField(state, tractorAction) : footAction(state);
+  const msg = tractorReady(state) ? tractorFieldPlot(state, tractorAction, skip) : footAction(state);
   return tiredOrResult(state, msg);
 }
 
@@ -522,6 +529,7 @@ export function autoPlayStep(state) {
     }
   }
   const notReserved = (t) => !reserved.has(`${t.x},${t.y}`);
+  const isReserved = (x, y) => reserved.has(`${x},${y}`);
 
   const seedId = p.selectedSeed;
   const seedDef = seedId && Crops.get(seedId);
@@ -532,12 +540,12 @@ export function autoPlayStep(state) {
   if (canPlantSelected) {
     const emptyTilled = tiles.filter(({ tile }) => tile.tilled && !tile.crop).filter(notReserved);
     const toPlant = nearestTo(p, emptyTilled);
-    if (toPlant) return runAt(state, toPlant.x, toPlant.y, farming.plant, 'seed');
+    if (toPlant) return runAt(state, toPlant.x, toPlant.y, farming.plant, 'seed', isReserved);
   }
 
   const untilled = tiles.filter(({ tile }) => !tile.tilled && !tile.crop && TILLABLE.includes(tile.base)).filter(notReserved);
   const toTill = nearestTo(p, untilled);
-  if (toTill) return runAt(state, toTill.x, toTill.y, farming.till, 'plow');
+  if (toTill) return runAt(state, toTill.x, toTill.y, farming.till, 'plow', isReserved);
 
   // Nothing left to till on ground that's already clear -- reclaim more of
   // it by chopping a tree before spending any gold (on seed, upgrades, or
