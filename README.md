@@ -74,7 +74,7 @@ All of the above (except movement and `P`) act only **on the tile you're standin
 
 | Key | Action |
 |-----|--------|
-| `m` | Mount / dismount at garage **G** (blocked in rain) |
+| `m` | Mount / dismount next to garage **G** (blocked in rain) |
 | `n` | Cycle implement (plow / seed / water / harvest) |
 | `y` | Toggle overnight auto-route |
 | `,` | Cycle auto zone |
@@ -234,7 +234,7 @@ Hire hands from the board. They work **when you sleep**.
 ## Machines & tractor (`x`, `m`/`n`/`y`/`,`)
 
 1. Buy a tractor in the shop (`6`) — garage tile **`G`** appears.
-2. Stand on **G**, press **`m`** to mount (not in rain).
+2. Stand next to **G** (it's a building, so not walkable), press **`m`** to mount (not in rain).
 3. Cycle implement with **`n`**, drive and use field keys as usual (uses fuel).
 4. Enable **auto** (`y`) and pick a **zone** (`,`) for overnight routes.
 5. Buy fuel cans (`7`) and a second tractor for more capacity / throughput.

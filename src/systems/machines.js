@@ -83,14 +83,19 @@ export function buyFuel(state, cans = 1) {
   return { ok: true, msg: `Refuelled (+${FUEL_CAN * cans}). Fuel: ${tr.fuel}/${tr.fuelCap}.` };
 }
 
-// Mount only at the garage (blocked in rain); dismount anywhere.
+// Mount only next to the garage (blocked in rain); dismount anywhere. Like
+// every other building tile, the garage itself is unwalkable, so this checks
+// adjacency rather than standing on it -- requiring the exact tile made
+// mounting impossible to ever trigger.
 export function toggleMount(state) {
   const tr = tractorState(state);
   if (!tr.owned) return 'You do not own a tractor.';
   if (tr.mounted) { tr.mounted = false; return 'Dismounted.'; }
   if (state.weather === 'rain') return 'Cannot mount in the rain.';
-  const onGarage = tr.garage && state.player.x === tr.garage.x && state.player.y === tr.garage.y;
-  if (!onGarage) return 'Stand on the garage (G) to mount.';
+  const nearGarage = tr.garage &&
+    Math.abs(state.player.x - tr.garage.x) <= 1 &&
+    Math.abs(state.player.y - tr.garage.y) <= 1;
+  if (!nearGarage) return 'Stand next to the garage (G) to mount.';
   tr.mounted = true;
   return 'Mounted the tractor. Drive with movement keys; t/p/e/r work the land (fuel).';
 }
