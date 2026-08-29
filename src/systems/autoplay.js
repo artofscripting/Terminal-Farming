@@ -7,7 +7,7 @@
 import { Crops, Tractors } from '../content/registry.js';
 import { RANCH_BUILDINGS, ANIMALS, HAY_COST, buildingLevelDef } from '../content/animals.js';
 import { WORKSHOPS, allRecipes } from '../content/workshops.js';
-import { plotTiles } from '../world/plots.js';
+import { plotTiles, plotIdAt } from '../world/plots.js';
 import { count, countBase } from './inventory.js';
 import { seedPrice, buySeed, sellableItems, sellAllItems, sellItem, nextToolTier, upgradeTool } from './economy.js';
 import { meetsCropLevel } from './skills.js';
@@ -42,7 +42,7 @@ const SHOULDER_DAYS = 5; // must match calendar.js's frost shoulder window
 const TILLABLE = ['grass', 'field', 'sand'];
 const UPGRADE_GOLD_THRESHOLD = 2000; // start spending surplus gold on the farm past this
 const HAY_RESERVE_DAYS = 56; // 8 weeks -- also exactly Wheat's fall->winter->spring off-season gap
-const SEED_BATCH_SIZE = 8; // cap per buy so a restock re-rolls variety often, instead of one monocrop wave filling the whole field
+const SEED_BATCH_SIZE = 8; // tryMakeSeeds' seed-plant restock target per crop -- unrelated to how much is bought to plant a whole plot
 const RESERVE_SURPLUS_CAP = 100; // a reserved item still sells anything held above this, so a slow-draining reserve can't hoard forever
 
 // How many of the current season's remaining days are free of frost risk,
@@ -415,8 +415,8 @@ function tryProcess(state) {
 // low, convert a bit of that crop into seeds before it can get auto-sold --
 // this is the assessment the seed plant itself never makes on its own; it
 // only ever converts when asked, whether that's a player keypress or this.
-// Targets SEED_BATCH_SIZE (the same restock size buySeed uses) so the plant
-// can cover at least one restock cycle without spending any gold on seed.
+// Targets SEED_BATCH_SIZE so there's always a small seed buffer on hand
+// without spending any gold on it.
 function tryMakeSeeds(state) {
   const sp = state.seedPlant;
   if (!sp?.built) return null;
@@ -936,15 +936,28 @@ export function autoPlayStep(state) {
 
   // Nothing left to work with hand tools -- buy seed for whatever open
   // ground remains, if a safe crop and the gold for it are both available.
-  // Batch size is capped (not "enough for the whole field") so the next
-  // restock re-rolls pickSeedToPlant's variety/hay check again soon, rather
-  // than one choice claiming every open tile in a single purchase.
+  // Sized to cover every plantable tile in the plot nearest the player, not
+  // some small fixed batch -- so hand-planting (which, like harvest/water/
+  // till, always walks to the nearest matching tile next) keeps landing in
+  // that same plot with the same crop until the whole thing is planted,
+  // instead of switching crop and plot every few tiles. A tractor whole-
+  // plot pass already plants every eligible tile of its plot with one crop
+  // in a single action regardless; this just makes sure there's enough
+  // seed on hand to actually cover it, and gives hand-planting the same
+  // whole-plot-same-crop-same-day result so harvest and replant line up
+  // together later. Naturally bounded to one plot's tile count (<=64), so
+  // no separate cap is needed the way the old fixed batch size provided.
   const plantable = buildable.filter(notReserved);
   if (plantable.length > 0) {
     const chosen = pickSeedToPlant(state);
     if (chosen) {
       const price = seedPrice(state, chosen.id);
-      const qty = Math.min(plantable.length, SEED_BATCH_SIZE, Math.floor(p.gold / price));
+      const target = nearestTo(p, plantable);
+      const targetPlotId = target && plotIdAt(target.x, target.y);
+      const plotPlantable = targetPlotId
+        ? plantable.filter(({ x, y }) => plotIdAt(x, y) === targetPlotId).length
+        : plantable.length;
+      const qty = Math.min(plotPlantable, Math.floor(p.gold / price));
       if (qty > 0) {
         p.selectedSeed = chosen.id;
         return { msg: buySeed(state, chosen.id, qty).msg, slept: false };
