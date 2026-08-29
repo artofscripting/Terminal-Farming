@@ -355,8 +355,21 @@ Friendship is **♥ 0–10**. Hearts rise from quest turn-ins and liked gifts. F
 | Council Lunch | Marla | 2 bread | First Harvest + ♥2 | — |
 | Shop Special | Sam | 1 pancakes | Milk Route + ♥4 | — |
 | Rare Find | Pip | 1 truffle | Trail Stew + ♥3 | Pumpkin |
+| Berry Basket | Pip | 4 wild berries | Forest Favor | — |
+| Herbalist's Request | Pip | 3 herbs | Berry Basket | — |
+| Winter Stores | Pip | 3 winter roots | Herbalist's Request + ♥2 | — |
+| Oil Press | Pip | 1 truffle oil | Rare Find + ♥5 | — |
+| Wool Coat | Sam | 3 wool | Milk Route | — |
+| Cotton Shipment | Sam | 4 ginned cotton | Shop Special | — |
+| Tailor's Thread | Sam | 3 thread | Cotton Shipment + ♥5 | — |
+| Weaver's Cloth | Sam | 3 cloth | Tailor's Thread + ♥5 | — |
+| Sunday Best | Sam | 2 shirts | Weaver's Cloth + ♥6 | — |
+| Lumber Order | Marla | 5 planks | Council Lunch | — |
+| New Furniture | Marla | 1 furniture | Lumber Order + ♥3 | — |
+| Market Sacks | Marla | 2 sacks | New Furniture + ♥4 | — |
+| Harvest Festival | Marla | 3 celebration cakes | Market Sacks + Sunday Best + Oil Press, + ♥6 | — |
 
-"Seed reward" permanently unlocks that seed for purchase/planting (see Crops above) the moment the quest is turned in.
+"Seed reward" permanently unlocks that seed for purchase/planting (see Crops above) the moment the quest is turned in. **Harvest Festival** is the storyline's finale — it only opens up once each founder's deepest branch is finished (Marla's civic lumber->furniture->sacks chain, Sam's wool side quest and full cotton->thread->cloth->shirt chain, and Pip's forage-collection chain plus Oil Press), so it's worth pursuing all three rather than just one NPC's line.
 
 HUD **`Q#`** shows how many quests you currently have active.
 
