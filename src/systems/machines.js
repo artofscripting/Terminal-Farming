@@ -1,4 +1,4 @@
-import { Tractors } from '../content/registry.js';
+import { Tractors, Tools } from '../content/registry.js';
 import { Crops } from '../content/registry.js';
 import { add, remove, count } from './inventory.js';
 import { qualityKey } from './farming.js';
@@ -197,20 +197,45 @@ function workTile(state, action, x, y) {
   return false;
 }
 
-// Manual tractor action over a 3x3 area, burning 1 fuel per tile worked.
+// Player energy per tile of active tractor work -- 1/10th what the same
+// action costs by hand (farming.js's hoe/can/sickle tiers are 2/2/1 energy,
+// PLANT_ENERGY is 1), charged per tile instead of per action-call since one
+// tractor pass can cover many tiles at once. Only used by the two
+// player-driven passes below (tractorField, tractorFieldPlot) -- the
+// overnight auto-route further down runs unattended after the player's
+// energy has already reset for the new day, same as hired labor, so it
+// stays energy-free.
+const TRACTOR_ENERGY_DIVISOR = 10;
+const HAND_ENERGY_BY_IMPLEMENT = {
+  plow: () => Tools.get('hoe').tiers[0].energy,
+  water: () => Tools.get('can').tiers[0].energy,
+  harvest: () => Tools.get('sickle').tiers[0].energy,
+  seed: () => 1, // matches farming.js's flat PLANT_ENERGY
+};
+function tractorEnergyCost(action) {
+  return HAND_ENERGY_BY_IMPLEMENT[action]() / TRACTOR_ENERGY_DIVISOR;
+}
+
+// Manual tractor action over a 3x3 area, burning 1 fuel and some player
+// energy (see tractorEnergyCost) per tile worked.
 export function tractorField(state, action) {
   const tr = tractorState(state);
   if (!tr.mounted) return null; // not driving
+  const energyCost = tractorEnergyCost(action);
   let worked = 0;
   for (const [x, y] of area3x3(state.player.x, state.player.y)) {
-    if (tr.fuel <= 0) break;
+    if (tr.fuel <= 0 || state.player.energy < energyCost) break;
     if (workTile(state, action, x, y)) {
       tr.fuel -= 1;
+      state.player.energy = Math.max(0, state.player.energy - energyCost);
       worked += 1;
     }
   }
-  if (tr.fuel <= 0 && worked === 0) return 'Out of fuel (buy a fuel can, shop 7).';
-  if (worked === 0) return `Nothing to ${action} here.`;
+  if (worked === 0) {
+    if (tr.fuel <= 0) return 'Out of fuel (buy a fuel can, shop 7).';
+    if (state.player.energy < energyCost) return 'Too tired to drive the tractor.';
+    return `Nothing to ${action} here.`;
+  }
   return `Tractor ${action}: ${worked} tile${worked === 1 ? '' : 's'}. Fuel ${tr.fuel}/${tr.fuelCap}.`;
 }
 
@@ -230,18 +255,23 @@ export function tractorFieldPlot(state, action, skip) {
   const tr = tractorState(state);
   if (!tr.mounted) return 'Mount the tractor first.';
   const impl = action || tr.implement;
+  const energyCost = tractorEnergyCost(impl);
   const plotId = plotIdAt(state.player.x, state.player.y);
   let worked = 0;
   for (const { x, y } of plotTiles(plotId)) {
-    if (tr.fuel <= 0) break;
+    if (tr.fuel <= 0 || state.player.energy < energyCost) break;
     if (skip && skip(x, y)) continue;
     if (workTile(state, impl, x, y)) {
       tr.fuel -= 1;
+      state.player.energy = Math.max(0, state.player.energy - energyCost);
       worked += 1;
     }
   }
-  if (tr.fuel <= 0 && worked === 0) return 'Out of fuel (buy a fuel can, shop 7).';
-  if (worked === 0) return `Nothing to ${impl} in this plot.`;
+  if (worked === 0) {
+    if (tr.fuel <= 0) return 'Out of fuel (buy a fuel can, shop 7).';
+    if (state.player.energy < energyCost) return 'Too tired to drive the tractor.';
+    return `Nothing to ${impl} in this plot.`;
+  }
   return `Tractor ${impl} (whole plot): ${worked} tile${worked === 1 ? '' : 's'}. Fuel ${tr.fuel}/${tr.fuelCap}.`;
 }
 
