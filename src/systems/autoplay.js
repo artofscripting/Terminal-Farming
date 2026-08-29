@@ -452,8 +452,9 @@ function tiredOrResult(state, msg) {
 }
 
 // One 0.1s-per-tile step toward (tx,ty) via real pathing -- never a
-// teleport, so crossing the farm costs the same energy (or fuel, once
-// mounted) and time it would walking there by hand. Returns a status string
+// teleport, so crossing the farm costs the same energy (a tenth as much
+// once mounted -- see movement.js's tryStep) and time it would walking
+// there by hand. Returns a status string
 // on a still-walking or blocked tick (the caller should stop and surface
 // that as this tick's result); returns null once the player is already
 // exactly on (tx,ty), meaning the caller should now perform its action.
@@ -472,8 +473,7 @@ function tiredOrResult(state, msg) {
 function stepToward(state, tx, ty) {
   const p = state.player;
   if (p.x === tx && p.y === ty) { state.autoplayPath = null; return null; }
-  const mounted = Boolean(state.tractor?.mounted);
-  if (!mounted && p.energy <= 0) return 'Too tired to walk.';
+  if (p.energy <= 0) return 'Too tired to walk.';
 
   const cached = state.autoplayPath;
   const steps = (cached && cached.tx === tx && cached.ty === ty && cached.atX === p.x && cached.atY === p.y)

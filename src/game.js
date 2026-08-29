@@ -188,8 +188,7 @@ export class Game {
 
   move(dx, dy) {
     const p = this.state.player;
-    const mounted = this.state.tractor?.mounted;
-    if (!mounted && p.energy <= 0) { this.setStatus('Too tired — sleep (z).'); return false; }
+    if (p.energy <= 0) { this.setStatus('Too tired — sleep (z).'); return false; }
     return tryStep(this.state, p.x + dx, p.y + dy);
   }
 
@@ -222,8 +221,7 @@ export class Game {
       return;
     }
     const p = this.state.player;
-    const mounted = this.state.tractor?.mounted;
-    if (!mounted && p.energy <= 0) {
+    if (p.energy <= 0) {
       this.setStatus(sleep(this.state));
       this.save.save(this.state, 'auto');
       this.render();

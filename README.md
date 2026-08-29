@@ -28,7 +28,7 @@ Energy drops with actions. Sleep restores it. Eat cooked food in the kitchen whe
 
 | Key | Action |
 |-----|--------|
-| WASD / arrows / hjkl | Move (costs 1 energy; roads are far cheaper) |
+| WASD / arrows / hjkl | Move (costs 1 energy, 0.1 on roads; a tenth of that while tractor-mounted — 0.1 / 0.01) |
 | `t` | Till soil |
 | `p` | Plant selected seed |
 | `e` | Water |
@@ -245,7 +245,7 @@ Hire hands from the board. They work **when you sleep**.
 
 1. Buy a tractor in the shop (`6`) — garage tile **`G`** appears.
 2. Stand next to **G** (it's a building, so not walkable), press **`m`** to mount (not in rain).
-3. Cycle implement with **`n`**, drive and use field keys as usual (uses fuel, plus a tenth the usual energy per tile).
+3. Cycle implement with **`n`**, drive and use field keys as usual — driving costs a tenth the usual movement energy (0.1 per tile, 0.01 on roads), and field keys use fuel plus a tenth the usual energy per tile.
 4. Enable **auto** (`y`) and pick a **zone** (`,`) for overnight routes.
 5. Buy fuel cans (`7`) and a second tractor for more capacity / throughput.
 
