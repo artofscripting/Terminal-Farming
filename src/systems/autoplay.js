@@ -425,6 +425,25 @@ function tractorReady(state) {
   return Boolean(tr && tr.mounted && tr.fuel > 0);
 }
 
+// Top off a mounted-but-dry tractor immediately, however much is affordable
+// -- not gated by UPGRADE_GOLD_THRESHOLD (unlike tryFarmUpgrade's own
+// pre-emptive top-up, which only tops off idle downtime): without this,
+// runAt hitting an empty tank mid-plot would fall back to hand tools and
+// stay there, tile by tile, for the rest of the game -- gold sitting
+// unspent has no way to turn back into whole-plot passes on its own.
+// Returns null (no action taken) if there's a tank to fill but nothing
+// affordable at all, so the caller's hand-tool fallback still applies.
+function tryRefuelTractor(state) {
+  const tr = state.tractor;
+  if (!tr || !tr.owned || tr.fuel >= tr.fuelCap) return null;
+  const cansNeeded = Math.ceil((tr.fuelCap - tr.fuel) / FUEL_CAN);
+  const cansAffordable = Math.floor(state.player.gold / FUEL_CAN_COST);
+  const cans = Math.min(cansNeeded, cansAffordable);
+  if (cans <= 0) return null;
+  const res = buyFuel(state, cans);
+  return res.ok ? res.msg : null;
+}
+
 // Turns a raw action-result string into this tick's { msg, slept } --
 // central so every call site treats "too tired" the same way: sleep instead
 // of reporting the failure, same idiom autoFarm/autoHarvest already used.
@@ -508,12 +527,36 @@ function walkableNeighbor(world, bx, by, offsets = ALL_8_OFFSETS) {
 // the one tile the player is standing on anyway. Tractor failure messages
 // ("Out of fuel...", "Nothing to X here.") never match "tired", so they
 // fall through as an ordinary non-sleep result and the next tick just
-// re-picks a target.
+// re-picks a target. If the tractor is mounted but ran dry mid-plot,
+// refuels first (tryRefuelTractor) rather than falling back to hand tools
+// -- otherwise a large field with more untilled/unplanted tiles than one
+// tank of fuel would finish its first pass, then grind through the rest one
+// tile at a time by hand forever, even with plenty of gold to just refill.
 function runAt(state, x, y, footAction, tractorAction, skip) {
   const walkMsg = stepToward(state, x, y);
   if (walkMsg) return tiredOrResult(state, walkMsg);
+  const tr = state.tractor;
+  if (tr && tr.mounted && tr.fuel <= 0) {
+    const refuelMsg = tryRefuelTractor(state);
+    if (refuelMsg) return tiredOrResult(state, refuelMsg);
+  }
   const msg = tractorReady(state) ? tractorFieldPlot(state, tractorAction, skip) : footAction(state);
   return tiredOrResult(state, msg);
+}
+
+// Buy the first tractor the instant it's affordable at all -- not gated by
+// UPGRADE_GOLD_THRESHOLD like the rest of the upgrade ladder (tryFarmUpgrade),
+// because every other field action's whole-plot efficiency depends on this
+// one purchase existing, so delaying it to keep a spending reserve just
+// prolongs the slow, tile-by-tile hand-tool phase for no benefit. Called
+// unconditionally at the top of autoPlayStep, ahead of even harvest/water,
+// since it's a single one-time action (returns null forever after) and a
+// one-tick delay to those doesn't matter.
+function tryBuyFirstTractor(state) {
+  if (state.tractor?.owned) return null;
+  if (state.player.gold < Tractors.all()[0].cost) return null;
+  const res = buyTractor(state);
+  return res.ok ? res.msg : null;
 }
 
 // Mount the tractor the moment it's usable -- owned, fuelled, not already
@@ -627,18 +670,19 @@ function tryFarmUpgrade(state, tiles) {
     if (res.ok) return res.msg;
   }
 
-  // Buy (or upgrade) the tractor as soon as affordable -- runAt/tractorReady
-  // already prefer driving it, whole plot in one pass, the instant it's
-  // owned+mounted+fuelled, so without this step auto-play would run hand
-  // tools forever no matter how much gold piled up, never actually
-  // acquiring the thing that makes the field loop fast. models[0] is Mk1
-  // (not yet owned) or, once owned, buyTractor itself finds the next model.
-  const tractorCost = tr?.owned
-    ? Tractors.all()[Tractors.all().findIndex((m) => m.id === tr.model) + 1]?.cost
-    : Tractors.all()[0].cost;
-  if (tractorCost !== undefined && affordable(tractorCost)) {
-    const res = buyTractor(state);
-    if (res.ok) return res.msg;
+  // Upgrade to the next tractor model once there's slack for it. The
+  // *first* tractor is bought the instant it's affordable at all (see
+  // tryBuyFirstTractor, called unconditionally at the very top of
+  // autoPlayStep) -- it's the one purchase that unlocks whole-plot
+  // efficiency for everything else, so it doesn't wait for this reserve-
+  // gated ladder. A model upgrade is just a nice-to-have on top of an
+  // already-functioning tractor, so it stays here.
+  if (tr?.owned) {
+    const nextModel = Tractors.all()[Tractors.all().findIndex((m) => m.id === tr.model) + 1];
+    if (nextModel && affordable(nextModel.cost)) {
+      const res = buyTractor(state);
+      if (res.ok) return res.msg;
+    }
   }
 
   // Irrigation pays for itself in saved watering energy forever after, so it
@@ -754,6 +798,9 @@ function tryFarmUpgrade(state, tiles) {
 export function autoPlayStep(state) {
   const p = state.player;
   const tiles = ownedWorkableTiles(state);
+
+  const buyTractorMsg = tryBuyFirstTractor(state);
+  if (buyTractorMsg) return tiredOrResult(state, buyTractorMsg);
 
   const mountMsg = tryMountTractor(state);
   if (mountMsg) return tiredOrResult(state, mountMsg);
