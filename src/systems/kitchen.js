@@ -1,8 +1,8 @@
 import { RECIPES, recipeDef } from '../content/recipes.js';
 import { add, count } from './inventory.js';
 import { decodeCropKey, qualityKey } from './farming.js';
-import { plotTiles } from '../world/plots.js';
 import { gainXp, culinaryQualityBonus, rollQualityBonus } from './skills.js';
+import { findFreeOwnedTile } from './plotmarket.js';
 
 export const KITCHEN_COST = 250;
 
@@ -123,18 +123,4 @@ export function buyKitchen(state) {
   state.hasKitchen = true;
   state.kitchen = { x: spot.x, y: spot.y };
   return { ok: true, msg: `Built a kitchen (K) for ${KITCHEN_COST}g. Cook with b.` };
-}
-
-function findFreeOwnedTile(state) {
-  for (const plotId of state.ownedPlots) {
-    for (const { x, y } of plotTiles(plotId)) {
-      const t = state.world.getTile(x, y);
-      const occupiedByPlayer = state.player.x === x && state.player.y === y;
-      if (!t.building && !t.crop && !occupiedByPlayer &&
-          ['grass', 'field', 'sand'].includes(t.base)) {
-        return { x, y };
-      }
-    }
-  }
-  return null;
 }

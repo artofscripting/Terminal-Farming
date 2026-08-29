@@ -2,7 +2,7 @@ import { Tractors, Tools } from '../content/registry.js';
 import { Crops } from '../content/registry.js';
 import { add, remove, count } from './inventory.js';
 import { qualityKey } from './farming.js';
-import { ownsTile } from './plotmarket.js';
+import { ownsTile, findFreeOwnedTile } from './plotmarket.js';
 import { plotIdAt, plotTiles } from '../world/plots.js';
 import { ranchState } from './ranch.js';
 import { gainXp } from './skills.js';
@@ -28,19 +28,6 @@ export function tractorState(state) {
     };
   }
   return state.tractor;
-}
-
-function findFreeOwnedTile(state) {
-  for (const plotId of state.ownedPlots) {
-    for (const { x, y } of plotTiles(plotId)) {
-      const t = state.world.getTile(x, y);
-      const onPlayer = state.player.x === x && state.player.y === y;
-      if (!t.building && !t.crop && !onPlayer && ['grass', 'field', 'sand'].includes(t.base)) {
-        return { x, y };
-      }
-    }
-  }
-  return null;
 }
 
 // Buy the first tractor (stamps a garage G) or upgrade to the next model.

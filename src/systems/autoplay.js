@@ -18,7 +18,7 @@ import {
   dailyHayNeed,
 } from './ranch.js';
 import { buyWorkshop, workshopState, maxRuns, process as runWorkshopRecipe } from './workshops.js';
-import { nextExpansionPlot, expandFarm, expandPrice } from './plotmarket.js';
+import { nextExpansionPlot, expandFarm, expandPrice, keepsBuildingsReachable } from './plotmarket.js';
 import {
   installIrrigationPlot, buyWell, hasNearbyWater, IRRIGATION_COST, IRRIGATION_RADIUS, WELL_COST,
 } from './irrigation.js';
@@ -631,7 +631,8 @@ function tryPlaceWell(state, tiles, affordable) {
   const r2 = IRRIGATION_RADIUS * IRRIGATION_RADIUS;
   const spot = nearestTo(target, tiles.filter(({ x, y, tile }) =>
     !tile.building && !tile.crop && !tile.irrigation && TILLABLE.includes(tile.base) &&
-    (x - target.x) ** 2 + (y - target.y) ** 2 <= r2).filter(notBlocked(state)));
+    (x - target.x) ** 2 + (y - target.y) ** 2 <= r2 && keepsBuildingsReachable(state, x, y))
+    .filter(notBlocked(state)));
   if (!spot) return null;
 
   const walkMsg = stepToward(state, spot.x, spot.y);

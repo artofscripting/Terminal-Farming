@@ -10,19 +10,56 @@ function marlaDiscount(state) {
 // Terrain a plot must be made of to be farmable/ownable.
 const OWNABLE_BASES = new Set(['grass', 'field', 'sand']);
 
-// The first owned, unbuilt, uncropped, unoccupied tile -- shared by every
-// system that stamps a building (ranch.js, workshops.js).
+const ADJACENT_8 = [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]];
+
+// (x,y)'s walkability, assuming a building now sits at (bx,by) -- lets the
+// same isWalkable() check answer "would this still be open after that spot
+// gets built on" without actually mutating the tile first.
+function isWalkableIfBuiltAt(state, x, y, bx, by) {
+  if (x === bx && y === by) return false;
+  return state.world.isWalkable(x, y);
+}
+
+function hasOpenSide(state, cx, cy, bx, by) {
+  return ADJACENT_8.some(([dx, dy]) => isWalkableIfBuiltAt(state, cx + dx, cy + dy, bx, by));
+}
+
+// True if putting a building at (bx,by) leaves it -- and every other
+// building already standing next to it -- with at least one walkable
+// neighbor to path up to. Checked across all 8 neighbors (Chebyshev
+// distance 1), matching how the game itself treats "standing next to" a
+// building elsewhere (toggleMount, the seed plant). Only buildings actually
+// adjacent to (bx,by) can be affected by placing something here, so this
+// stays a handful of isWalkable() calls regardless of farm size.
+export function keepsBuildingsReachable(state, bx, by) {
+  if (!hasOpenSide(state, bx, by, bx, by)) return false;
+  for (const [dx, dy] of ADJACENT_8) {
+    const x = bx + dx;
+    const y = by + dy;
+    if (!state.world.getTile(x, y).building) continue;
+    if (!hasOpenSide(state, x, y, bx, by)) return false;
+  }
+  return true;
+}
+
+// A random owned, unbuilt, uncropped, unoccupied tile that wouldn't seal off
+// any building (this new one included) -- shared by every system that
+// stamps a building (garage, kitchen, seed plant, ranch, workshops).
+// Randomized instead of always the first in scan order so buildings end up
+// spread across the farm instead of packed into one deterministic corner.
 export function findFreeOwnedTile(state) {
+  const candidates = [];
   for (const plotId of state.ownedPlots) {
     for (const { x, y } of plotTiles(plotId)) {
       const t = state.world.getTile(x, y);
       const onPlayer = state.player.x === x && state.player.y === y;
-      if (!t.building && !t.crop && !onPlayer && OWNABLE_BASES.has(t.base)) {
-        return { x, y };
+      if (!t.building && !t.crop && !onPlayer && OWNABLE_BASES.has(t.base) && keepsBuildingsReachable(state, x, y)) {
+        candidates.push({ x, y });
       }
     }
   }
-  return null;
+  if (candidates.length === 0) return null;
+  return candidates[Math.floor(Math.random() * candidates.length)];
 }
 
 // Can this individual tile be farmed once its plot is owned?

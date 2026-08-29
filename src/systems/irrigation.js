@@ -1,4 +1,4 @@
-import { ownsTile } from './plotmarket.js';
+import { ownsTile, keepsBuildingsReachable } from './plotmarket.js';
 import { plotIdAt, plotTiles } from '../world/plots.js';
 
 export const IRRIGATION_RADIUS = 20;
@@ -77,6 +77,7 @@ export function buyWell(state) {
   if (tile.building) return 'Something is already built here.';
   if (tile.crop) return 'Clear the crop here first.';
   if (!['grass', 'field', 'sand'].includes(tile.base)) return 'Cannot build a well here.';
+  if (!keepsBuildingsReachable(state, p.x, p.y)) return 'Building here would seal off a nearby building.';
   if (p.gold < WELL_COST) return `Need ${WELL_COST}g to build a well.`;
   p.gold -= WELL_COST;
   tile.building = 'well';
