@@ -1,8 +1,10 @@
 import { QUESTS, questDef } from '../content/quests.js';
+import { CORE_NPC_IDS } from '../content/npcs.js';
 import { countBase, removeBase } from './inventory.js';
 import { gainXp, charmRewardMultiplier, charmBonusHearts } from './skills.js';
 import { addStat } from './stats.js';
 import { unlockSeed } from './seedUnlocks.js';
+import { generateTownQuest, isTownQuestId, parseTownQuestId } from './townQuests.js';
 
 export function questState(state) {
   if (!state.quests) state.quests = { active: [], completed: [] };
@@ -34,13 +36,41 @@ export function isAvailable(state, quest) {
   return heartsOf(state, quest.npc) >= quest.minHeart;
 }
 
-export function availableFor(state, npc) {
-  return QUESTS.filter((q) => q.npc === npc && isAvailable(state, q));
+// A flavor NPC's one procedurally generated quest for the town the caller
+// specifies (region = {rx, ry}), or null without one -- core founders never
+// use this path, since their quests are the fixed storyline regardless of
+// region (they only ever appear in the home town anyway).
+function townQuestFor(state, npc, region) {
+  if (CORE_NPC_IDS.includes(npc) || !region) return null;
+  return generateTownQuest(state.seed, npc, region.rx, region.ry);
 }
 
-export function activeFor(state, npc) {
+// Resolves any quest id -- storyline or procedurally generated town quest --
+// back to its full quest object. A town quest needs no stored data beyond
+// its id (already sitting in state.quests.active/completed): the id embeds
+// the npc and town region, and state.seed is enough to regenerate the exact
+// same quest deterministically.
+function resolveQuest(state, questId) {
+  if (isTownQuestId(questId)) {
+    const { npcId, rx, ry } = parseTownQuestId(questId);
+    return generateTownQuest(state.seed, npcId, rx, ry);
+  }
+  return questDef(questId);
+}
+
+// `region` ({rx, ry}) is required to check a flavor NPC's town quest (which
+// town's version), and ignored for the three founders.
+export function availableFor(state, npc, region) {
+  if (CORE_NPC_IDS.includes(npc)) return QUESTS.filter((q) => q.npc === npc && isAvailable(state, q));
+  const quest = townQuestFor(state, npc, region);
+  return quest && isAvailable(state, quest) ? [quest] : [];
+}
+
+export function activeFor(state, npc, region) {
   const q = questState(state);
-  return QUESTS.filter((quest) => quest.npc === npc && q.active.includes(quest.id));
+  if (CORE_NPC_IDS.includes(npc)) return QUESTS.filter((quest) => quest.npc === npc && q.active.includes(quest.id));
+  const quest = townQuestFor(state, npc, region);
+  return quest && q.active.includes(quest.id) ? [quest] : [];
 }
 
 export function canTurnIn(state, quest) {
@@ -49,7 +79,7 @@ export function canTurnIn(state, quest) {
 
 export function acceptQuest(state, questId) {
   const q = questState(state);
-  const quest = questDef(questId);
+  const quest = resolveQuest(state, questId);
   if (!quest || !isAvailable(state, quest)) return { ok: false, msg: 'Cannot accept that quest now.' };
   q.active.push(questId);
   return { ok: true, msg: `Accepted "${quest.name}".` };
@@ -57,7 +87,7 @@ export function acceptQuest(state, questId) {
 
 export function turnInQuest(state, questId) {
   const q = questState(state);
-  const quest = questDef(questId);
+  const quest = resolveQuest(state, questId);
   if (!quest || !q.active.includes(questId)) return { ok: false, msg: 'Quest not active.' };
   if (!canTurnIn(state, quest)) {
     return { ok: false, msg: `Need ${quest.need.qty}x ${quest.need.id}.` };
@@ -69,7 +99,11 @@ export function turnInQuest(state, questId) {
   const hearts = quest.reward.hearts + charmBonusHearts(state);
   state.player.gold += gold;
   addHearts(state, quest.npc, hearts);
-  const achievement = addStat(state, 'questsCompleted', 1);
+  // Procedural town quests don't count toward the storyline's questsCompleted
+  // achievements (Town Hero / Legend of the Valley) -- an effectively
+  // unbounded number of them exist across a procedurally generated world,
+  // so counting them would make "complete every quest" meaningless.
+  const achievement = isTownQuestId(questId) ? null : addStat(state, 'questsCompleted', 1);
   gainXp(state, 'charm', 5);
   let msg = `Turned in "${quest.name}": +${gold}g, +${hearts}♥.`;
   if (quest.reward.unlocksSeed) {

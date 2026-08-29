@@ -12,7 +12,7 @@ import { WORKSHOPS, workshopDef, allRecipes } from '../content/workshops.js';
 import { laborSummary, ROLES } from '../systems/labor.js';
 import { npcDef } from '../content/npcs.js';
 import { heartsOf, availableFor, activeFor, canTurnIn, isBestFriend } from '../systems/quests.js';
-import { greeting, likedHeld, npcsInCurrentTown } from '../systems/town.js';
+import { greeting, likedHeld, npcsInCurrentTown, currentTown } from '../systems/town.js';
 import { currentFestival, daysToFestival } from '../systems/festivals.js';
 import { forecastWeather } from '../systems/calendar.js';
 import { statsOf } from '../systems/stats.js';
@@ -313,9 +313,10 @@ export function renderTownRoot(renderer, state) {
     renderer.text(3, 3, 'No one here to talk to.', DIM, PANEL_BG);
     return [];
   }
+  const region = currentTown(state);
   npcs.forEach((n, i) => {
-    const avail = availableFor(state, n.id).length;
-    const active = activeFor(state, n.id);
+    const avail = availableFor(state, n.id, region).length;
+    const active = activeFor(state, n.id, region);
     const ready = active.some((q) => canTurnIn(state, q));
     let mark = '';
     if (ready) mark = ' [turn-in!]';
@@ -336,8 +337,9 @@ export function renderTownNpc(renderer, state, npcId) {
   renderer.text(3, 3, greeting(state, npcId), TEXT, PANEL_BG);
 
   let y = 5;
-  const avail = availableFor(state, npcId);
-  const active = activeFor(state, npcId);
+  const region = currentTown(state);
+  const avail = availableFor(state, npcId, region);
+  const active = activeFor(state, npcId, region);
   const likes = likedHeld(state, npcId);
 
   if (avail.length) {

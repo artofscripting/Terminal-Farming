@@ -371,6 +371,12 @@ Friendship is **♥ 0–10**. Hearts rise from quest turn-ins and liked gifts. F
 
 "Seed reward" permanently unlocks that seed for purchase/planting (see Crops above) the moment the quest is turned in. **Harvest Festival** is the storyline's finale — it only opens up once each founder's deepest branch is finished (Marla's civic lumber->furniture->sacks chain, Sam's wool side quest and full cotton->thread->cloth->shirt chain, and Pip's forage-collection chain plus Oil Press), so it's worth pursuing all three rather than just one NPC's line.
 
+### Every other town has its own people and quests
+
+Marla, Sam, and Pip only live in the home town. Every other town the world generates gets its own roster of 2-5 townsfolk, drawn at random from a pool of 22 flavor NPCs (Gus the Blacksmith, Nora the Baker, and so on) -- who's actually present in a given town is fixed by its location, so the same town always has the same people if you leave and come back.
+
+Each of those flavor NPCs offers **one procedurally generated fetch quest** -- a request for some quantity of a random crop, animal/workshop good, wild forage item, or cooked dish, with a gold + heart reward scaled to what's asked for. Like the roster itself, a given NPC's quest in a given town is fixed (revisit later and it's the same request), but the same NPC encountered in a *different* town offers a different one. These don't have prerequisites or unlock seeds, and completing them doesn't count toward the questsCompleted achievements -- they're exploration flavor and extra income, not part of the storyline.
+
 HUD **`Q#`** shows how many quests you currently have active.
 
 **Auto-play (`Z`) runs the whole quest loop on its own:** it walks to the home town (Marla, Sam, and Pip are always there — no exploring needed), accepts anything available, and turns in anything ready, then repeats immediately if there's more waiting (a completed quest often unlocks the next one right away). While it works toward an active quest it holds back the item that quest needs from auto-selling, biases planting toward a crop one is still waiting on, and cooks whatever dish one wants the moment it has the ingredients (buying a kitchen itself if it doesn't have one yet). **Every auto-play accept or turn-in holds a gold banner on screen for 6 real seconds** before auto-play resumes, so you can actually read it during an unattended run.
