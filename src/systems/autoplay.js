@@ -4,7 +4,7 @@
 // useful right now. Never teleports: whenever the next thing to do is more
 // than a tile away, it walks there first (stepToward, one tile per tick,
 // real pathing), the same as if the player had pressed the movement keys.
-import { Crops } from '../content/registry.js';
+import { Crops, Tractors } from '../content/registry.js';
 import { RANCH_BUILDINGS, ANIMALS, HAY_COST, buildingLevelDef } from '../content/animals.js';
 import { WORKSHOPS, allRecipes } from '../content/workshops.js';
 import { plotTiles } from '../world/plots.js';
@@ -22,7 +22,7 @@ import { nextExpansionPlot, expandFarm, expandPrice } from './plotmarket.js';
 import {
   installIrrigationPlot, buyWell, hasNearbyWater, IRRIGATION_COST, IRRIGATION_RADIUS, WELL_COST,
 } from './irrigation.js';
-import { toggleMount, tractorFieldPlot, buyFuel, FUEL_CAN, FUEL_CAN_COST } from './machines.js';
+import { toggleMount, tractorFieldPlot, buyFuel, buyTractor, FUEL_CAN, FUEL_CAN_COST } from './machines.js';
 import { convertToSeeds, SEEDS_PER_CROP_MIN, SEEDS_PER_CROP_MAX } from './seedplant.js';
 import { findPath } from './pathfind.js';
 import { tryStep } from './movement.js';
@@ -610,6 +610,7 @@ function tryFarmUpgrade(state, tiles) {
   const p = state.player;
   if (p.gold <= UPGRADE_GOLD_THRESHOLD) return null;
   const affordable = (cost) => p.gold - cost >= UPGRADE_GOLD_THRESHOLD;
+  const tr = state.tractor;
 
   for (const toolId of Object.keys(p.tools)) {
     const next = nextToolTier(state, toolId);
@@ -623,6 +624,20 @@ function tryFarmUpgrade(state, tiles) {
   // tryQuestCook can never do anything for those quests at all.
   if (!state.hasKitchen && affordable(KITCHEN_COST)) {
     const res = buyKitchen(state);
+    if (res.ok) return res.msg;
+  }
+
+  // Buy (or upgrade) the tractor as soon as affordable -- runAt/tractorReady
+  // already prefer driving it, whole plot in one pass, the instant it's
+  // owned+mounted+fuelled, so without this step auto-play would run hand
+  // tools forever no matter how much gold piled up, never actually
+  // acquiring the thing that makes the field loop fast. models[0] is Mk1
+  // (not yet owned) or, once owned, buyTractor itself finds the next model.
+  const tractorCost = tr?.owned
+    ? Tractors.all()[Tractors.all().findIndex((m) => m.id === tr.model) + 1]?.cost
+    : Tractors.all()[0].cost;
+  if (tractorCost !== undefined && affordable(tractorCost)) {
+    const res = buyTractor(state);
     if (res.ok) return res.msg;
   }
 
@@ -641,7 +656,6 @@ function tryFarmUpgrade(state, tiles) {
   // Keep an owned tractor's tank topped up -- the field loop already prefers
   // it over hand tools whenever it's mounted and fuelled, so an empty tank
   // just silently falls back to slower, energy-costing hand work otherwise.
-  const tr = state.tractor;
   if (tr && tr.owned && tr.fuel < tr.fuelCap) {
     const spendable = p.gold - UPGRADE_GOLD_THRESHOLD;
     const cansNeeded = Math.ceil((tr.fuelCap - tr.fuel) / FUEL_CAN);
