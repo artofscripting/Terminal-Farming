@@ -171,18 +171,37 @@ function neighborPlotIds(plotId) {
   ];
 }
 
-// The first unowned plot adjacent to owned land that has no buildings/roads.
+// A generous but finite outward bound, in plot-grid rings, so a farm
+// completely boxed in by unownable terrain gives up eventually instead of
+// generating chunks forever -- normal worlds find something well before
+// this.
+const MAX_EXPANSION_RINGS = 20;
+
+// The nearest unowned, ownable plot (see plotOwnable) to the farm as a
+// whole -- a breadth-first search outward from every owned plot at once,
+// ring by ring (all of ring 1 checked before any of ring 2, etc.), so nearer
+// land always wins over farther land regardless of which owned plot it's
+// touching. Previously only ever checked plots directly adjacent to owned
+// land (ring 1) with a looser bar than plotOwnable (no buildings/roads/
+// plaza, but no minimum-farmable-tiles check) -- a farm boxed in by mostly
+// rock/water on every immediate side could never expand again even when
+// perfectly good land sat one or two rings further out.
 export function nextExpansionPlot(state) {
-  for (const owned of state.ownedPlots) {
-    for (const cand of neighborPlotIds(owned)) {
-      if (state.ownedPlots.has(cand)) continue;
-      let blocked = false;
-      for (const { x, y } of plotTiles(cand)) {
-        const t = state.world.getTile(x, y);
-        if (t.building || t.base === 'road' || t.base === 'plaza') { blocked = true; break; }
+  const visited = new Set(state.ownedPlots);
+  let frontier = [...state.ownedPlots];
+  for (let ring = 0; ring < MAX_EXPANSION_RINGS && frontier.length > 0; ring++) {
+    const next = [];
+    for (const plotId of frontier) {
+      for (const cand of neighborPlotIds(plotId)) {
+        if (visited.has(cand)) continue;
+        visited.add(cand);
+        next.push(cand);
       }
-      if (!blocked) return cand;
     }
+    for (const cand of next) {
+      if (plotOwnable(state.world, cand)) return cand;
+    }
+    frontier = next;
   }
   return null;
 }
