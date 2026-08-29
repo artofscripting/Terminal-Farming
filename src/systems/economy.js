@@ -5,6 +5,7 @@ import { recipeDef } from '../content/recipes.js';
 import { add, remove, count } from './inventory.js';
 import { decodeCropKey } from './farming.js';
 import { gainXp, seedDiscount, meetsCropLevel } from './skills.js';
+import { isSeedUnlocked } from './seedUnlocks.js';
 import { addStat } from './stats.js';
 import { rngAt } from '../engine/rng.js';
 import { logSale, logPurchase } from './diary.js';
@@ -133,6 +134,9 @@ export function buySeed(state, cropId, qty = 1) {
   }
   if (!meetsCropLevel(state, def)) {
     return { ok: false, msg: `${def.name} needs Farming Lv${def.minFarmingLevel} (you are Lv${state.player.skills.farming.level}).` };
+  }
+  if (!isSeedUnlocked(state, cropId)) {
+    return { ok: false, msg: `${def.name} seed is locked -- finish the right quest, or get lucky foraging.` };
   }
   const cost = seedPrice(state, cropId) * qty;
   if (state.player.gold < cost) return { ok: false, msg: `Need ${cost}g.` };

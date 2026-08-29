@@ -1,6 +1,7 @@
 import { Crops, Fertilizers, Tools } from '../content/registry.js';
 import { decodeCropKey } from '../systems/farming.js';
 import { sellableItems, nextToolTier, itemName, seedPrice, marketFactor, dailyDeal, priceSparkline } from '../systems/economy.js';
+import { isSeedUnlocked } from '../systems/seedUnlocks.js';
 import { expandPrice, nextExpansionPlot } from '../systems/plotmarket.js';
 import { canCook, listRecipes, dishesInInventory } from '../systems/kitchen.js';
 import { recipeDef } from '../content/recipes.js';
@@ -92,9 +93,13 @@ export function renderSeedBuy(renderer, state) {
   const farmLvl = state.player.skills.farming.level;
   items.forEach((c, i) => {
     if (i >= KEYS.length) return;
-    const locked = (c.minFarmingLevel || 1) > farmLvl;
-    if (locked) {
+    const levelLocked = (c.minFarmingLevel || 1) > farmLvl;
+    if (levelLocked) {
       row(renderer, 3 + i, KEYS[i], `${c.name.padEnd(12)} requires Farming Lv${c.minFarmingLevel}`, DIM);
+      return;
+    }
+    if (!isSeedUnlocked(state, c.id)) {
+      row(renderer, 3 + i, KEYS[i], `${c.name.padEnd(12)} locked -- quest reward or lucky forage find`, DIM);
       return;
     }
     const price = seedPrice(state, c.id);

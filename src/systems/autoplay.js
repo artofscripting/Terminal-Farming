@@ -11,6 +11,7 @@ import { plotTiles } from '../world/plots.js';
 import { count, countBase } from './inventory.js';
 import { seedPrice, buySeed, sellableItems, sellAllItems, sellItem, nextToolTier, upgradeTool } from './economy.js';
 import { meetsCropLevel } from './skills.js';
+import { isSeedUnlocked } from './seedUnlocks.js';
 import { sleep } from './calendar.js';
 import { DAYS_PER_SEASON } from '../state/gameState.js';
 import {
@@ -64,7 +65,8 @@ function seasonalCandidates(state) {
   const remaining = safeDaysRemaining(state.calendar.season, state.calendar.day);
   if (remaining <= 0) return [];
   return Crops.all()
-    .filter((c) => c.seasons.includes(state.calendar.season) && c.stages <= remaining && meetsCropLevel(state, c))
+    .filter((c) => c.seasons.includes(state.calendar.season) && c.stages <= remaining &&
+      meetsCropLevel(state, c) && isSeedUnlocked(state, c.id))
     .map((c) => ({ crop: c, score: (c.sellBase - seedPrice(state, c.id)) / c.stages }));
 }
 
@@ -126,7 +128,7 @@ function pickSeedToPlant(state) {
   if (questCrop) {
     const remaining = safeDaysRemaining(state.calendar.season, state.calendar.day);
     const questCropEligible = questCrop.seasons.includes(state.calendar.season) &&
-      questCrop.stages <= remaining && meetsCropLevel(state, questCrop);
+      questCrop.stages <= remaining && meetsCropLevel(state, questCrop) && isSeedUnlocked(state, questCrop.id);
     if (questCropEligible) return questCrop;
   }
   const need = dailyHayNeed(state);

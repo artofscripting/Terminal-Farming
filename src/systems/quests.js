@@ -2,6 +2,7 @@ import { QUESTS, questDef } from '../content/quests.js';
 import { countBase, removeBase } from './inventory.js';
 import { gainXp, charmRewardMultiplier, charmBonusHearts } from './skills.js';
 import { addStat } from './stats.js';
+import { unlockSeed } from './seedUnlocks.js';
 
 export function questState(state) {
   if (!state.quests) state.quests = { active: [], completed: [] };
@@ -70,7 +71,11 @@ export function turnInQuest(state, questId) {
   addHearts(state, quest.npc, hearts);
   const achievement = addStat(state, 'questsCompleted', 1);
   gainXp(state, 'charm', 5);
-  const msg = `Turned in "${quest.name}": +${gold}g, +${hearts}♥.`;
+  let msg = `Turned in "${quest.name}": +${gold}g, +${hearts}♥.`;
+  if (quest.reward.unlocksSeed) {
+    const unlockMsg = unlockSeed(state, quest.reward.unlocksSeed);
+    if (unlockMsg) msg += ` ${unlockMsg}`;
+  }
   return { ok: true, msg: achievement ? `${msg} ${achievement}` : msg };
 }
 

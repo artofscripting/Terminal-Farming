@@ -4,6 +4,9 @@ import { gainXp } from './skills.js';
 import { rngAt } from '../engine/rng.js';
 import { addStat } from './stats.js';
 import { isBestFriend } from './quests.js';
+import { stillLockedCrops, unlockSeed } from './seedUnlocks.js';
+
+const FORAGE_UNLOCK_CHANCE = 0.03; // per gather, while any seed is still locked
 
 // Gather forage on the player's tile (works anywhere).
 export function gather(state) {
@@ -18,7 +21,13 @@ export function gather(state) {
   state.world.touch(state.player.x, state.player.y);
   const achievement = addStat(state, 'forageGathered', qty);
   gainXp(state, 'foraging', 3);
-  const msg = `Gathered ${qty}x ${name}.`;
+  let msg = `Gathered ${qty}x ${name}.`;
+  const locked = stillLockedCrops(state);
+  if (locked.length > 0 && Math.random() < FORAGE_UNLOCK_CHANCE) {
+    const pick = locked[Math.floor(Math.random() * locked.length)];
+    const unlockMsg = unlockSeed(state, pick);
+    if (unlockMsg) msg += ` ${unlockMsg}`;
+  }
   return achievement ? `${msg} ${achievement}` : msg;
 }
 

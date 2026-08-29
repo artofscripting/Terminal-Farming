@@ -161,6 +161,8 @@ Each day you walk the farm, spend energy on work, then **`z` sleep**. Overnight:
 
 **27 crops total.** Cycle with **`c`**. The shop (`o` → `1`) lists only **in-season** seeds (keys `1–9`, `0`, `a–z`). Winter favors its own frost-immune crops (beet, garlic, kale, spinach, leek). **Tomato, Berry, Pepper, and Cucumber regrow in 2 days after harvest; Eggplant in 3** — harvesting one of these leaves it planted (still needs watering) instead of clearing the tile, so one seed keeps producing all season instead of a single one-shot harvest. **Oak Tree** grows in every season (never dies to season-change or frost) but takes a full year (112 watered days) — miss watering 3 nights running and it dies just like any other crop, so irrigation is the practical way to see one through. Feeds the sawmill; **Cotton** feeds the cotton gin (see Workshops below). **Wheat** threshes into grain (the sellable crop item) *and* leaves behind harvestable **hay** (+2 per unit, credited straight to your ranch hay stock on harvest) — it's the only way to grow your own animal feed instead of buying it.
 
+**5 of the best crops start locked**, on top of any farming-level requirement: **Corn, Cauliflower, Squash, Melon, and Pumpkin** (Pumpkin, the single highest-value crop, is the last to unlock) can't be bought, auto-played, or planted until unlocked — either as a reward for turning in the right quest (see Town below), or by a small random chance (~3%) each time you gather forage. The shop shows a locked seed's row dimmed with "locked -- quest reward or lucky forage find" instead of a price; `c` tags a still-locked crop the same way if you cycle onto it.
+
 **Market prices drift** day to day, ±5% per item (seeds and sell prices alike) — watch for `▲`/`▼` next to a price in the shop, plus a tiny 5-day trend bar (e.g. `▅▁▇▅▇`) so you can see whether a price is climbing or about to dip.
 
 ---
@@ -227,6 +229,8 @@ Each morning, forage can appear on grass. Stand on it and press **`g`**.
 | `$` | Truffle | All (needs Foraging Lv3+) |
 
 **Auto-play (`Z`) gathers forage too** — anything on owned land, plus wild finds within a short range of wherever it currently is.
+
+**Every gather has a small (~3%) chance of unlocking one of the 5 locked seeds** (see Crops above), picked at random among whichever are still locked — one more reason to keep foraging even once you don't need the raw materials.
 
 ---
 
@@ -339,18 +343,20 @@ Friendship is **♥ 0–10**. Hearts rise from quest turn-ins and liked gifts. F
 
 ### Quest chain (overview)
 
-| Quest | NPC | Needs | Unlocks after |
-|-------|-----|-------|----------------|
-| First Harvest | Marla | 3 turnips | — |
-| Egg Run | Sam | 2 eggs | First Harvest |
-| Forest Favor | Pip | 2 mushrooms | First Harvest |
-| Butter Trade | Sam | 1 butter | Egg Run |
-| Town Table | Marla | 1 cake | Egg Run |
-| Milk Route | Sam | 2 milk | Butter Trade |
-| Trail Stew | Pip | 1 stew | Forest Favor |
-| Council Lunch | Marla | 2 bread | First Harvest + ♥2 |
-| Shop Special | Sam | 1 pancakes | Milk Route + ♥4 |
-| Rare Find | Pip | 1 truffle | Trail Stew + ♥3 |
+| Quest | NPC | Needs | Unlocks after | Seed reward |
+|-------|-----|-------|----------------|-------------|
+| First Harvest | Marla | 3 turnips | — | Corn |
+| Egg Run | Sam | 2 eggs | First Harvest | Squash |
+| Forest Favor | Pip | 2 mushrooms | First Harvest | Cauliflower |
+| Butter Trade | Sam | 1 butter | Egg Run | — |
+| Town Table | Marla | 1 cake | Egg Run | — |
+| Milk Route | Sam | 2 milk | Butter Trade | — |
+| Trail Stew | Pip | 1 stew | Forest Favor | Melon |
+| Council Lunch | Marla | 2 bread | First Harvest + ♥2 | — |
+| Shop Special | Sam | 1 pancakes | Milk Route + ♥4 | — |
+| Rare Find | Pip | 1 truffle | Trail Stew + ♥3 | Pumpkin |
+
+"Seed reward" permanently unlocks that seed for purchase/planting (see Crops above) the moment the quest is turned in.
 
 HUD **`Q#`** shows how many quests you currently have active.
 

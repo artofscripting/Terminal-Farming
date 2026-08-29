@@ -7,6 +7,7 @@ import { sleep } from './systems/calendar.js';
 import { gather } from './systems/forage.js';
 import { buyPlotAt, expandFarm } from './systems/plotmarket.js';
 import { buySeed, sellItem, sellAllItems, buyFertilizer, buyDailyDeal, upgradeTool } from './systems/economy.js';
+import { isSeedUnlocked } from './systems/seedUnlocks.js';
 import { cook, eat, buyKitchen } from './systems/kitchen.js';
 import { buyRanchBuilding, upgradeRanchBuilding, buyAnimal, buyHay, feedAll, toggleAutoFeed } from './systems/ranch.js';
 import { buyTractor, buyFuel, toggleMount, cycleImplement, toggleAuto, cycleZone, tractorField, tractorFieldPlot } from './systems/machines.js';
@@ -270,7 +271,9 @@ export class Game {
     const ids = Crops.all().map((c) => c.id);
     const i = ids.indexOf(this.state.player.selectedSeed);
     this.state.player.selectedSeed = ids[(i + 1) % ids.length];
-    this.setStatus(`Seed: ${Crops.get(this.state.player.selectedSeed).name}`);
+    const def = Crops.get(this.state.player.selectedSeed);
+    const lockedTag = isSeedUnlocked(this.state, def.id) ? '' : ' (locked -- quest reward or lucky forage find)';
+    this.setStatus(`Seed: ${def.name}${lockedTag}`);
   }
 
   cycleFertilizer() {
