@@ -1,3 +1,5 @@
+import { QUESTS } from './quests.js';
+
 // Lifetime-stat milestones. Each fires once, the first time its stat crosses
 // `threshold`, paying a one-time gold reward. Add an entry here to add a new
 // achievement -- systems/stats.js checks this list generically.
@@ -9,7 +11,11 @@ export const ACHIEVEMENTS = [
   { id: 'forage_50', stat: 'forageGathered', threshold: 50, reward: 100, name: 'Forager', desc: 'Gather 50 forage items' },
   { id: 'days_28', stat: 'daysPlayed', threshold: 28, reward: 150, name: 'First Season', desc: 'Play 28 days' },
   { id: 'days_112', stat: 'daysPlayed', threshold: 112, reward: 500, name: 'First Year', desc: 'Play a full year (112 days)' },
-  { id: 'quests_10', stat: 'questsCompleted', threshold: 10, reward: 300, name: 'Town Hero', desc: 'Complete every quest' },
+  { id: 'quests_10', stat: 'questsCompleted', threshold: 10, reward: 300, name: 'Town Hero', desc: 'Complete 10 quests' },
+  // Threshold reads off QUESTS.length itself so this never goes stale again
+  // the way quests_10's old "Complete every quest" description did the
+  // moment the chain grew past 10.
+  { id: 'quests_all', stat: 'questsCompleted', threshold: QUESTS.length, reward: 600, name: 'Legend of the Valley', desc: 'Complete every quest' },
 ];
 
 export function achievementDef(id) {
