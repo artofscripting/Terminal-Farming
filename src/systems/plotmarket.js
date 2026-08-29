@@ -116,6 +116,23 @@ export function priceOfPlot(state, plotId) {
   return Math.round(base * quality * closeness * density * marlaDiscount(state));
 }
 
+// New land arrives ready to plant: any tree is felled (no loot -- this is a
+// land purchase, not a chopping action) and every tillable tile starts
+// already tilled, so the plot never needs a manual clear-and-till pass
+// before the first planting.
+function clearAndTillPlot(state, plotId) {
+  for (const { x, y } of plotTiles(plotId)) {
+    const t = state.world.getTile(x, y);
+    if (t.base === 'tree') t.base = 'grass';
+    t.tilled = OWNABLE_BASES.has(t.base) && !t.building;
+    t.watered = false;
+    t.fertilizer = null;
+    t.crop = null;
+    t.forage = null;
+    state.world.touch(x, y);
+  }
+}
+
 // Attempt to buy the plot containing (wx, wy). Returns a result message.
 export function buyPlotAt(state, wx, wy) {
   const plotId = plotIdAt(wx, wy);
@@ -131,7 +148,8 @@ export function buyPlotAt(state, wx, wy) {
   }
   state.player.gold -= price;
   state.ownedPlots.add(plotId);
-  return { ok: true, msg: `Bought plot ${plotId} for ${price}g. Now farm it!` };
+  clearAndTillPlot(state, plotId);
+  return { ok: true, msg: `Bought plot ${plotId} for ${price}g. Cleared and tilled -- plant away!` };
 }
 
 export function ownsTile(state, wx, wy) {
@@ -178,19 +196,7 @@ export function expandFarm(state) {
     return { ok: false, msg: `Need ${price}g to expand (you have ${state.player.gold}g).` };
   }
   state.player.gold -= price;
-  // Ownership doesn't reshape the land -- sand, rock, and water are
-  // permanent, and a tree tile stays a tree until someone chops it down
-  // (farming.js's chopTree). Only clear transient farming state, which a
-  // never-owned plot shouldn't have anyway; this is just defensive.
-  for (const { x, y } of plotTiles(plotId)) {
-    const t = state.world.getTile(x, y);
-    t.tilled = false;
-    t.watered = false;
-    t.fertilizer = null;
-    t.crop = null;
-    t.forage = null;
-    state.world.touch(x, y);
-  }
   state.ownedPlots.add(plotId);
-  return { ok: true, msg: `Expanded farm (+plot ${plotId}) for ${price}g.` };
+  clearAndTillPlot(state, plotId);
+  return { ok: true, msg: `Expanded farm (+plot ${plotId}) for ${price}g. Cleared and tilled.` };
 }

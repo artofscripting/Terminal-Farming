@@ -9,7 +9,7 @@ import { RANCH_BUILDINGS, ANIMALS, HAY_COST, buildingLevelDef } from '../content
 import { WORKSHOPS, allRecipes } from '../content/workshops.js';
 import { plotTiles } from '../world/plots.js';
 import { count, countBase } from './inventory.js';
-import { seedPrice, buySeed, sellableItems, sellAllItems, nextToolTier, upgradeTool } from './economy.js';
+import { seedPrice, buySeed, sellableItems, sellAllItems, sellItem, nextToolTier, upgradeTool } from './economy.js';
 import { meetsCropLevel } from './skills.js';
 import { sleep } from './calendar.js';
 import { DAYS_PER_SEASON } from '../state/gameState.js';
@@ -42,6 +42,7 @@ const TILLABLE = ['grass', 'field', 'sand'];
 const UPGRADE_GOLD_THRESHOLD = 2000; // start spending surplus gold on the farm past this
 const HAY_RESERVE_DAYS = 56; // 8 weeks -- also exactly Wheat's fall->winter->spring off-season gap
 const SEED_BATCH_SIZE = 8; // cap per buy so a restock re-rolls variety often, instead of one monocrop wave filling the whole field
+const RESERVE_SURPLUS_CAP = 100; // a reserved item still sells anything held above this, so a slow-draining reserve can't hoard forever
 
 // How many of the current season's remaining days are free of frost risk,
 // starting from today. Spring's first days and fall's last days are frost
@@ -302,6 +303,23 @@ function reservedForProcessing(state) {
   return reserved;
 }
 
+// Sells off whatever a reserved item (see reservedForProcessing/
+// reservedForQuests) has stacked up past RESERVE_SURPLUS_CAP -- reservation
+// is meant to keep enough on hand for a workshop recipe or a quest, not to
+// hoard an unbounded pile once production keeps outrunning what actually
+// gets consumed. Only ever sells the excess above the cap, one stack per
+// call, same one-action-per-tick discipline as everything else here.
+function sellReservedSurplus(state, reservedGoods, reservedQuestGoods) {
+  for (const it of sellableItems(state)) {
+    const baseId = it.category === 'forage' ? it.key : farming.decodeCropKey(it.key).id;
+    const key = `${it.category}:${baseId}`;
+    if (!reservedGoods.has(key) && !reservedQuestGoods.has(key)) continue;
+    const surplus = it.qty - RESERVE_SURPLUS_CAP;
+    if (surplus > 0) return sellItem(state, it.category, it.key, surplus).msg;
+  }
+  return null;
+}
+
 // "cat:id" keys for whatever an active quest still needs -- the quest's own
 // item, plus (if it wants a cooked dish) that recipe's ingredients too, so
 // neither gets auto-sold out from under a quest before it can be finished.
@@ -372,6 +390,7 @@ function tryQuestAction(state) {
 
   if (!isInTown(state)) {
     const home = townCenter(state.seed, 0, 0);
+    if (isBlockedTarget(state, home.x, home.y)) return null; // proven unreachable -- let other tasks run instead of repeating the same failed walk
     const walkMsg = stepToward(state, home.x, home.y);
     if (walkMsg) return walkMsg;
   }
@@ -407,7 +426,7 @@ function tryMakeSeeds(state) {
     const haveCrop = countBase(inv, 'crops', id);
     if (haveCrop < 1) continue;
     const qty = Math.min(haveCrop, Math.max(1, Math.ceil((SEED_BATCH_SIZE - count(inv, 'seeds', id)) / avgYield)));
-    const spot = walkableNeighbor(state.world, sp.tile.x, sp.tile.y);
+    const spot = walkableNeighbor(state, sp.tile.x, sp.tile.y);
     if (!spot) return null;
     const walkMsg = stepToward(state, spot.x, spot.y);
     if (walkMsg) return walkMsg;
@@ -501,17 +520,25 @@ function stepToward(state, tx, ty) {
 const CARDINAL_OFFSETS = [[0, -1], [0, 1], [-1, 0], [1, 0]];
 const ALL_8_OFFSETS = [...CARDINAL_OFFSETS, [-1, -1], [1, -1], [-1, 1], [1, 1]];
 
-// First walkable tile next to (bx,by) -- for approaching a building (garage,
-// seed plant) or a tree rather than trying to path onto it; none of those
-// are walkable themselves, so pathing straight at one always fails. Defaults
-// to all 8 neighbors; pass CARDINAL_OFFSETS for a target (like a tree) that
-// only checks the 4 orthogonal neighbors for what's next to it, so the spot
-// picked here is guaranteed to be one the target action will actually see.
-function walkableNeighbor(world, bx, by, offsets = ALL_8_OFFSETS) {
+// First walkable, not-already-blocked tile next to (bx,by) -- for
+// approaching a building (garage, seed plant) or a tree rather than trying
+// to path onto it; none of those are walkable themselves, so pathing
+// straight at one always fails. Defaults to all 8 neighbors; pass
+// CARDINAL_OFFSETS for a target (like a tree) that only checks the 4
+// orthogonal neighbors for what's next to it, so the spot picked here is
+// guaranteed to be one the target action will actually see. Skips any
+// neighbor stepToward has already proven unreachable (isBlockedTarget) --
+// without this, a target whose one geometrically-nearest neighbor happens
+// to be topologically sealed off would recompute that exact same doomed
+// spot every tick forever, since this always used to return the first
+// walkable match regardless of whether a path there actually existed.
+// Returns null once every neighbor is blocked, so the caller moves on to
+// its next priority instead of retrying a walk that can never succeed.
+function walkableNeighbor(state, bx, by, offsets = ALL_8_OFFSETS) {
   for (const [dx, dy] of offsets) {
     const x = bx + dx;
     const y = by + dy;
-    if (world.isWalkable(x, y)) return { x, y };
+    if (state.world.isWalkable(x, y) && !isBlockedTarget(state, x, y)) return { x, y };
   }
   return null;
 }
@@ -567,7 +594,7 @@ function tryBuyFirstTractor(state) {
 function tryMountTractor(state) {
   const tr = state.tractor;
   if (!tr || !tr.owned || tr.mounted || tr.fuel <= 0 || state.weather === 'rain') return null;
-  const spot = walkableNeighbor(state.world, tr.garage.x, tr.garage.y);
+  const spot = walkableNeighbor(state, tr.garage.x, tr.garage.y);
   if (!spot) return null;
   const walkMsg = stepToward(state, spot.x, spot.y);
   if (walkMsg) return walkMsg;
@@ -584,7 +611,7 @@ function tryMountTractor(state) {
 function tryChopTree(state, tiles) {
   const target = tiles.find((t) => t.tile.base === 'tree');
   if (!target) return null;
-  const spot = walkableNeighbor(state.world, target.x, target.y, CARDINAL_OFFSETS);
+  const spot = walkableNeighbor(state, target.x, target.y, CARDINAL_OFFSETS);
   if (!spot) return null;
   const walkMsg = stepToward(state, spot.x, spot.y);
   if (walkMsg) return walkMsg;
@@ -845,6 +872,8 @@ export function autoPlayStep(state) {
   if (sellableItems(state).filter(sellable).length > 0) {
     return { msg: sellAllItems(state, sellable).msg, slept: false };
   }
+  const surplusMsg = sellReservedSurplus(state, reservedGoods, reservedQuestGoods);
+  if (surplusMsg) return { msg: surplusMsg, slept: false };
 
   // Once wealthy enough to build, hold back one open tile per not-yet-built
   // ranch or workshop building -- otherwise the till/plant loop below always
