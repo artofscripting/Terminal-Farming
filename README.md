@@ -177,7 +177,7 @@ Each day you walk the farm, spend energy on work, then **`z` sleep**. Overnight:
 | `4` | Expand farm (+2×+2, limited sizes) |
 | `5` | Buy fertilizer |
 | `6` | Buy tractor (then a 2nd) |
-| `7` | Fuel can (+20 fuel) |
+| `7` | Fuel can (+20 fuel, 17g) |
 | `8` | Ranch submenu — coop, barn, chickens, cows, hay |
 | `9` | Buy kitchen (unlock cooking) |
 | `0` | Workshops submenu — buy sawmill, carpenter, cotton gin, spinner, weaver, cloth goods maker |
@@ -253,9 +253,9 @@ Hire hands from the board. They work **when you sleep**.
 4. Enable **auto** (`y`) and pick a **zone** (`,`) for overnight routes.
 5. Buy fuel cans (`7`) and a second tractor for more capacity / throughput.
 
-Maintenance and fuel matter — an empty tank stops work. Overnight auto-route runs after your energy has already reset for the new day, so it stays energy-free (only fuel matters there).
+Maintenance and fuel matter — an empty tank stops work. Overnight auto-route runs after your energy has already reset for the new day, so it stays energy-free (only fuel matters there). Fuel cans hold their ground at 17g for +20 fuel; tank capacity is **200** on the Mk1 and **400** on the Mk2, so one full tank covers a lot of ground before it needs another.
 
-**Auto-play (`Z`) buys and uses a tractor automatically** — the instant gold covers its cost, mounts it as soon as it has fuel, drives every field action through it instead of by hand, refuels on the spot if the tank runs dry mid-plot, and keeps its tank topped up once you're past the 2000g reserve.
+**Auto-play (`Z`) buys and uses a tractor automatically** — the instant gold covers its cost, mounts it as soon as it has fuel, drives every field action through it instead of by hand, refuels on the spot if the tank runs dry mid-plot, and keeps its tank topped up once you're past the 2000g reserve. If it can't even afford one fuel can, it sells off whatever's sellable — crops, forage, goods, dishes, bypassing the usual workshop/quest holdbacks — rather than let the tractor sit idle for lack of gold; this also kicks in the moment a freshly bought tractor (which starts with an empty tank) needs its first fill-up.
 
 ---
 

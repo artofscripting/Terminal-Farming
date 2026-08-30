@@ -9,7 +9,7 @@ import { gainXp } from './skills.js';
 import { logHarvest } from './diary.js';
 
 export const FUEL_CAN = 20;
-export const FUEL_CAN_COST = 50;
+export const FUEL_CAN_COST = 17; // 1/3 of the old 50g
 const IMPLEMENTS = ['plow', 'seed', 'water', 'harvest'];
 
 // Lazily create the tractor state.

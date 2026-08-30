@@ -451,18 +451,39 @@ function tractorReady(state) {
 // pre-emptive top-up, which only tops off idle downtime): without this,
 // runAt hitting an empty tank mid-plot would fall back to hand tools and
 // stay there, tile by tile, for the rest of the game -- gold sitting
-// unspent has no way to turn back into whole-plot passes on its own.
-// Returns null (no action taken) if there's a tank to fill but nothing
-// affordable at all, so the caller's hand-tool fallback still applies.
+// unspent has no way to turn back into whole-plot passes on its own. If
+// gold can't cover even one can, sells whatever's sellable -- crops, goods,
+// forage, dishes -- bypassing the usual workshop/quest reservations,
+// because an idle tractor is a bigger loss than temporarily dipping into
+// reserved stock; a later tick can then afford fuel. Returns null only once
+// there's truly nothing left to sell and nothing affordable, so the
+// caller's hand-tool fallback still applies.
 function tryRefuelTractor(state) {
   const tr = state.tractor;
   if (!tr || !tr.owned || tr.fuel >= tr.fuelCap) return null;
   const cansNeeded = Math.ceil((tr.fuelCap - tr.fuel) / FUEL_CAN);
   const cansAffordable = Math.floor(state.player.gold / FUEL_CAN_COST);
   const cans = Math.min(cansNeeded, cansAffordable);
-  if (cans <= 0) return null;
-  const res = buyFuel(state, cans);
-  return res.ok ? res.msg : null;
+  if (cans > 0) {
+    const res = buyFuel(state, cans);
+    return res.ok ? res.msg : null;
+  }
+  if (sellableItems(state).length === 0) return null;
+  return sellAllItems(state).msg;
+}
+
+// Keeps a freshly bought (or fully drained) tractor from sitting permanently
+// unusable: tryMountTractor requires fuel > 0 to even attempt mounting, and
+// tryFarmUpgrade's own top-up step only fires once wealthy (past
+// UPGRADE_GOLD_THRESHOLD) -- gold just spent on the tractor itself, or
+// tight for any other reason, may never reach that bar on its own. Only
+// fires while completely dry and not yet mounted, so it doesn't preempt
+// urgent farm work over a merely partial tank -- that case is instead
+// handled reactively above, inside runAt, once actually needed mid-plot.
+function tryKeepTractorRunnable(state) {
+  const tr = state.tractor;
+  if (!tr || !tr.owned || tr.mounted || tr.fuel > 0) return null;
+  return tryRefuelTractor(state);
 }
 
 // Turns a raw action-result string into this tick's { msg, slept } --
@@ -831,6 +852,9 @@ export function autoPlayStep(state) {
 
   const buyTractorMsg = tryBuyFirstTractor(state);
   if (buyTractorMsg) return tiredOrResult(state, buyTractorMsg);
+
+  const keepFueledMsg = tryKeepTractorRunnable(state);
+  if (keepFueledMsg) return tiredOrResult(state, keepFueledMsg);
 
   const mountMsg = tryMountTractor(state);
   if (mountMsg) return tiredOrResult(state, mountMsg);
