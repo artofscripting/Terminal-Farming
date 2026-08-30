@@ -32,6 +32,8 @@ export function serialize(state) {
     stats: state.stats || null,
     achievements: state.achievements || null,
     home: state.home || null,
+    startOptions: state.startOptions || null,
+    cheatEverUsed: Boolean(state.cheatEverUsed),
     worldDeltas: state.world.collectDeltas(),
   };
 }
@@ -99,6 +101,10 @@ export function deserialize(rawData) {
     stats: data.stats || emptyStats(), // backfill for saves made before stats existed
     achievements: data.achievements || [],
     home: data.home || findHomeFallback(world, ownedPlots, data.player),
+    // Best-guess default for saves made before startOptions was tracked --
+    // its actual starting choices (if it was even a custom game) are lost.
+    startOptions: data.startOptions || { gold: 500, plots: 1, season: 'spring' },
+    cheatEverUsed: Boolean(data.cheatEverUsed),
     status: 'Loaded save.',
     running: true,
   };

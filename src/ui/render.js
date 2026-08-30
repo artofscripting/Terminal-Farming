@@ -14,6 +14,7 @@ import { BUNKHOUSE_UPGRADE_COST } from '../systems/labor.js';
 import { RANCH_BUILDINGS, buildingLevelDef, animalDef } from '../content/animals.js';
 import { WORKSHOPS } from '../content/workshops.js';
 import { xpToNextLevel } from '../systems/skills.js';
+import { SEASONS } from '../state/gameState.js';
 
 const OWNED_BG = [18, 30, 18];
 const WORLD_BG = [8, 10, 12];
@@ -220,6 +221,19 @@ function drawHud(renderer, state, w) {
   const forecast = forecastWeather(state);
   const line1 = ` Y${c.year} ${cap(c.season)} d${c.day}  |  ${cap(state.weather)} (tomorrow: ${cap(forecast)})  |  ${p.gold}g  |  E ${fmtEnergy(p.energy)}/${fmtEnergy(p.maxEnergy)}${tractorSeg}`;
   renderer.text(0, 0, line1, HUD_FG, [24, 26, 30]);
+
+  // Top-right: the 3 starting choices (gold-plots-season#), so a save's
+  // difficulty is visible at a glance, plus a red X if cheat mode was ever
+  // turned on for this save (sticks even after disabling it).
+  const so = state.startOptions;
+  if (so) {
+    const seasonNum = SEASONS.indexOf(so.season) + 1 || 1;
+    const startText = `${so.gold}-${so.plots}-${seasonNum}`;
+    const cheatSuffix = state.cheatEverUsed ? ' X' : '';
+    const x0 = Math.max(0, w - startText.length - cheatSuffix.length - 1);
+    renderer.text(x0, 0, startText, HUD_FG, [24, 26, 30]);
+    if (cheatSuffix) renderer.text(x0 + startText.length, 0, cheatSuffix, WARN, [24, 26, 30]);
+  }
   const seed = p.selectedSeed ? Crops.get(p.selectedSeed)?.name : 'none';
   const seedCount = p.selectedSeed ? count(p.inventory, 'seeds', p.selectedSeed) : 0;
   const fert = p.selectedFertilizer ? Fertilizers.get(p.selectedFertilizer)?.name : 'none';

@@ -79,6 +79,11 @@ export function newGame(seed = (Math.random() * 0xffffffff) >>> 0, options = {})
     achievements: [],
     status: 'Welcome to Terminal Harvest! Press ? for help.',
     running: true,
+    // The 3 starting choices (gold, total starting plots, season), kept
+    // around so the HUD can always show what this save started as -- shown
+    // as plot count, not the internal extraPlots-beyond-home value.
+    startOptions: { gold: startGold, plots: extraPlots + 1, season: startSeason },
+    cheatEverUsed: false,
   };
 
   const spawn = setupStarterFarm(state, extraPlots);

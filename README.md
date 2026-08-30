@@ -5,6 +5,8 @@
 
 **Custom game (`3`):** press `1`/`2`/`3` to cycle each setting through its own preset list, then **Enter** to start — starting gold (100g–50,000g), starting plots (1–5, extras beyond the home plot are cleared and tilled the same way a paid expansion is, free), and starting season. `1` new game always uses the defaults (500g, 1 plot, spring).
 
+The top-right of the HUD always shows those 3 starting numbers (gold-plots-season#, e.g. `2500-3-2` for 2500g/3 plots/summer) so a save's difficulty is visible at a glance, plus a red **X** if cheat mode (the console's `cheatmode enable`) has ever been turned on for that save — it stays lit even after disabling cheats again.
+
 In-game help is always available with **`?`** — press any other key afterward to look up what it does (and what it means on the map, if it's also a glyph). A command console is available with **`/`**.
 
 **Notifications:** accepting or turning in a quest, unlocking a seed, or crossing an achievement threshold pops up a bordered box on screen for 3 seconds (on top of whatever screen you're on), then clears itself automatically. This works the same whether you triggered it yourself or auto-play (`Z`) did.

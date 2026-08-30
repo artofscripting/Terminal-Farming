@@ -53,6 +53,7 @@ export function runCommand(state, line, io) {
       const arg = args[0]?.toLowerCase();
       if (arg !== 'enable' && arg !== 'disable') return { ok: false, msg: 'Usage: cheatmode <enable|disable>' };
       state.cheatMode = arg === 'enable';
+      if (state.cheatMode) state.cheatEverUsed = true; // sticks for this save, even after disabling
       return { ok: true, msg: `Cheat mode ${state.cheatMode ? 'ENABLED' : 'disabled'}.` };
     }
     case 'pos':
