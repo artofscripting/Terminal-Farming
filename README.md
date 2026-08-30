@@ -7,6 +7,8 @@
 
 In-game help is always available with **`?`** — press any other key afterward to look up what it does (and what it means on the map, if it's also a glyph). A command console is available with **`/`**.
 
+**Notifications:** accepting or turning in a quest, unlocking a seed, or crossing an achievement threshold pops up a bordered box on screen for 3 seconds (on top of whatever screen you're on), then clears itself automatically. This works the same whether you triggered it yourself or auto-play (`Z`) did.
+
 ---
 
 ## First day (quick start)

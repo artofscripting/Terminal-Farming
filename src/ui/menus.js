@@ -602,6 +602,47 @@ export function renderPause(renderer, confirm) {
   renderer.text(2, renderer.height - 2, 'Esc to resume.', DIM, PANEL_BG);
 }
 
+function wrapLine(text, maxWidth) {
+  const words = text.split(' ');
+  const lines = [];
+  let cur = '';
+  for (const w of words) {
+    const next = cur ? `${cur} ${w}` : w;
+    if (next.length > maxWidth && cur) { lines.push(cur); cur = w; }
+    else cur = next;
+  }
+  if (cur) lines.push(cur);
+  return lines.length ? lines : [''];
+}
+
+const NOTIF_BG = [35, 28, 8];
+const NOTIF_BORDER = [240, 200, 90];
+const NOTIF_TITLE = [250, 220, 130];
+const NOTIF_TEXT = [230, 225, 210];
+
+// Temporary event notification (achievement/quest/seed-unlock/etc.) drawn as
+// a bordered box on top of whatever screen is currently showing. `notif` is
+// { title, lines } -- game.js owns its content and the timer that clears it;
+// this is pure display, called unconditionally from render() every frame
+// the notification is still within its window regardless of game mode.
+export function renderNotification(renderer, notif) {
+  const maxTextWidth = Math.max(20, Math.min(46, renderer.width - 8));
+  const bodyLines = notif.lines.flatMap((l) => wrapLine(l, maxTextWidth));
+  const allLines = [notif.title, ...bodyLines];
+  const innerWidth = Math.min(maxTextWidth, Math.max(...allLines.map((l) => l.length)));
+  const boxWidth = innerWidth + 4;
+  const x0 = Math.max(0, Math.floor((renderer.width - boxWidth) / 2));
+  const y0 = 1;
+
+  renderer.text(x0, y0, `┌${'─'.repeat(boxWidth - 2)}┐`, NOTIF_BORDER, NOTIF_BG);
+  for (let i = 0; i < allLines.length; i++) {
+    const y = y0 + 1 + i;
+    renderer.text(x0, y, `│${' '.repeat(boxWidth - 2)}│`, NOTIF_BORDER, NOTIF_BG);
+    renderer.text(x0 + 2, y, allLines[i], i === 0 ? NOTIF_TITLE : NOTIF_TEXT, NOTIF_BG);
+  }
+  renderer.text(x0, y0 + 1 + allLines.length, `└${'─'.repeat(boxWidth - 2)}┘`, NOTIF_BORDER, NOTIF_BG);
+}
+
 // Custom game setup (title screen option 3). `c` is the draft state game.js
 // owns (goldIdx/plotsIdx/seasonIdx); the preset lists are passed in from
 // there too, so this stays pure display -- game.js's key handler does the

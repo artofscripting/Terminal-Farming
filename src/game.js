@@ -34,6 +34,50 @@ const CUSTOM_GOLD_PRESETS = [100, 250, 500, 1000, 2500, 5000, 10000, 25000, 5000
 const CUSTOM_PLOT_PRESETS = [1, 2, 3, 4, 5];
 const CUSTOM_SEASONS = ['spring', 'summer', 'fall', 'winter'];
 
+const NOTIFICATION_MS = 3000;
+// Matches the exact status-message formats their respective systems already
+// produce (stats.js's addStat, seedUnlocks.js's unlockSeed, quests.js's
+// turnInQuest/acceptQuest) -- setStatus() is the single chokepoint every one
+// of those messages passes through regardless of whether the triggering
+// action was a manual keypress or an auto-play tick, so hooking there
+// surfaces a notification box for all of them without touching any of that
+// system code. Fragile in the sense that it breaks quietly (just stops
+// popping a box) if one of those message formats changes wording; each
+// system's own tests/callers are unaffected either way.
+const ACHIEVEMENT_RE = /\u{1F3C6} Achievement: ([^!]+)!\s*(\([^)]*\))?/gu;
+const SEED_UNLOCK_RE = /Seed unlocked: ([^!]+)!/g;
+const QUEST_TURNIN_RE = /^Turned in "([^"]+)": ([^.]+)\./;
+const QUEST_ACCEPT_RE = /^Accepted "([^"]+)"\.$/;
+
+// Extracts a { title, lines } notification from a status message, or null
+// if nothing in it is notification-worthy. When more than one category
+// matches the same message (e.g. a quest turn-in that also unlocks a seed
+// and crosses an achievement threshold), every matching line is kept, and
+// the box's title reflects whichever category is considered most
+// noteworthy -- achievement > seed unlock > quest turn-in > quest accept.
+function buildNotification(msg) {
+  let title = null;
+  const lines = [];
+
+  const accept = msg.match(QUEST_ACCEPT_RE);
+  if (accept) { title = 'New Quest!'; lines.push(`"${accept[1]}"`); }
+
+  const turnIn = msg.match(QUEST_TURNIN_RE);
+  if (turnIn) { title = 'Quest Complete!'; lines.push(`"${turnIn[1]}" — ${turnIn[2]}.`); }
+
+  for (const m of msg.matchAll(SEED_UNLOCK_RE)) {
+    title = 'Seed Unlocked!';
+    lines.push(`${m[1]} seeds are now available.`);
+  }
+
+  for (const m of msg.matchAll(ACHIEVEMENT_RE)) {
+    title = 'Achievement Unlocked!';
+    lines.push(`${m[1]}! ${(m[2] || '').trim()}`.trim());
+  }
+
+  return title ? { title, lines } : null;
+}
+
 // Platform-agnostic game/UI state machine. Takes its I/O and storage as
 // injected dependencies so the same class drives both the Node terminal CLI
 // (src/main.js) and the browser build (src/web/main.js).
@@ -46,7 +90,7 @@ export class Game {
     this.onQuit = onQuit || (() => {});
     this.mode = 'title';
     this.state = null;
-    this.ui = { helpPage: 0, helpLookup: null, shopScreen: null, shopKeys: [], consoleInput: '', consoleResult: null };
+    this.ui = { helpPage: 0, helpLookup: null, shopScreen: null, shopKeys: [], consoleInput: '', consoleResult: null, notification: null };
     this.walkHomePath = null;
     this.walkHomeTimer = null;
     this.autoPlayTimer = null;
@@ -78,6 +122,15 @@ export class Game {
     if (this.state && msg) {
       this.state.status = msg;
       this.state.statusHighlight = highlight;
+      const notif = buildNotification(msg);
+      if (notif) {
+        this.ui.notification = { ...notif, until: Date.now() + NOTIFICATION_MS };
+        // Forces a re-render once the box's own display window elapses, so
+        // it disappears on its own even if the player doesn't press
+        // anything else in the meantime (a stray extra render() if a newer
+        // notification already replaced this one first is harmless).
+        setTimeout(() => this.render(), NOTIFICATION_MS);
+      }
     }
   }
 
@@ -620,49 +673,61 @@ export class Game {
   }
 
   // ---- Render dispatch ----
+  // Draws whatever screen `this.mode` calls for, then -- regardless of mode,
+  // since a notification-worthy event (quest/achievement/seed unlock) can
+  // fire from a menu keypress as easily as from the main game view -- the
+  // notification box on top if one's still within its display window, and
+  // flushes once at the end.
   render() {
-    if (this.mode === 'title') return this.renderTitle();
+    this.renderMode();
+    if (this.ui.notification && Date.now() < this.ui.notification.until) {
+      menus.renderNotification(this.renderer, this.ui.notification);
+    }
+    this.flush();
+  }
+
+  renderMode() {
+    if (this.mode === 'title') { this.renderTitle(); return; }
     if (this.mode === 'customgame') {
       menus.renderCustomGame(this.renderer, this.ui.customGame, CUSTOM_GOLD_PRESETS, CUSTOM_PLOT_PRESETS, CUSTOM_SEASONS);
-      return this.flush();
+      return;
     }
     if (this.mode === 'help') {
       if (this.ui.helpLookup) menus.renderKeyLookup(this.renderer, this.ui.helpLookup);
       else menus.renderHelp(this.renderer, this.ui.helpPage);
-      return this.flush();
+      return;
     }
-    if (this.mode === 'console') { menus.renderConsole(this.renderer, this.state, this.ui); return this.flush(); }
-    if (this.mode === 'inventory') { menus.renderInventory(this.renderer, this.state); return this.flush(); }
-    if (this.mode === 'shop') return this.renderShop();
+    if (this.mode === 'console') { menus.renderConsole(this.renderer, this.state, this.ui); return; }
+    if (this.mode === 'inventory') { menus.renderInventory(this.renderer, this.state); return; }
+    if (this.mode === 'shop') { this.renderShop(); return; }
     if (this.mode === 'kitchen') {
       this.ui.kitchenKeys = menus.renderKitchen(this.renderer, this.state, {
         mult: this.ui.kitchenMult || 1,
         eat: this.ui.kitchenEat,
       });
-      return this.flush();
+      return;
     }
-    if (this.mode === 'ranch') { menus.renderRanch(this.renderer, this.state); return this.flush(); }
-    if (this.mode === 'labor') { menus.renderLabor(this.renderer, this.state); return this.flush(); }
+    if (this.mode === 'ranch') { menus.renderRanch(this.renderer, this.state); return; }
+    if (this.mode === 'labor') { menus.renderLabor(this.renderer, this.state); return; }
     if (this.mode === 'town') {
       if (this.ui.townNpc) this.ui.townCtx = menus.renderTownNpc(this.renderer, this.state, this.ui.townNpc);
       else this.ui.townKeys = menus.renderTownRoot(this.renderer, this.state);
-      return this.flush();
+      return;
     }
-    if (this.mode === 'festival') { menus.renderFestival(this.renderer, this.state); return this.flush(); }
-    if (this.mode === 'skills') { menus.renderSkills(this.renderer, this.state); return this.flush(); }
-    if (this.mode === 'stats') { menus.renderStats(this.renderer, this.state); return this.flush(); }
-    if (this.mode === 'diary') { menus.renderDiary(this.renderer, this.state, this.ui.diaryIndex || 0); return this.flush(); }
-    if (this.mode === 'map') { menus.renderMap(this.renderer, this.state); return this.flush(); }
-    if (this.mode === 'workshops') { this.ui.workshopKeys = menus.renderWorkshops(this.renderer, this.state); return this.flush(); }
+    if (this.mode === 'festival') { menus.renderFestival(this.renderer, this.state); return; }
+    if (this.mode === 'skills') { menus.renderSkills(this.renderer, this.state); return; }
+    if (this.mode === 'stats') { menus.renderStats(this.renderer, this.state); return; }
+    if (this.mode === 'diary') { menus.renderDiary(this.renderer, this.state, this.ui.diaryIndex || 0); return; }
+    if (this.mode === 'map') { menus.renderMap(this.renderer, this.state); return; }
+    if (this.mode === 'workshops') { this.ui.workshopKeys = menus.renderWorkshops(this.renderer, this.state); return; }
     if (this.mode === 'seedplant') {
       this.ui.seedPlantKeys = menus.renderSeedPlant(this.renderer, this.state, { mult: this.ui.seedPlantMult || 1 });
-      return this.flush();
+      return;
     }
-    if (this.mode === 'save') { menus.renderSaveMenu(this.renderer, this.state, this.save.slotExists); return this.flush(); }
-    if (this.mode === 'load') { menus.renderLoadMenu(this.renderer, this.save.slotExists); return this.flush(); }
-    if (this.mode === 'pause') { menus.renderPause(this.renderer, this.ui.pauseConfirm); return this.flush(); }
+    if (this.mode === 'save') { menus.renderSaveMenu(this.renderer, this.state, this.save.slotExists); return; }
+    if (this.mode === 'load') { menus.renderLoadMenu(this.renderer, this.save.slotExists); return; }
+    if (this.mode === 'pause') { menus.renderPause(this.renderer, this.ui.pauseConfirm); return; }
     renderScene(this.renderer, this.camera, this.state);
-    this.flush();
   }
 
   renderShop() {
@@ -675,7 +740,6 @@ export class Game {
     else if (s === 'ranch') this.ui.shopKeys = menus.renderRanchShop(this.renderer, this.state);
     else if (s === 'fert') this.ui.shopKeys = menus.renderFertBuy(this.renderer, this.state);
     else if (s === 'workshopBuy') this.ui.shopKeys = menus.renderWorkshopBuy(this.renderer, this.state);
-    this.flush();
   }
 
   renderTitle() {
@@ -691,7 +755,6 @@ export class Game {
     r.text(cx - 12, 10, '3  Custom game', [220, 220, 210], [10, 16, 12]);
     r.text(cx - 12, 11, 'q  Quit', [220, 220, 210], [10, 16, 12]);
     r.text(cx - 12, 14, 'Buy plots, farm the world.', [150, 180, 150], [10, 16, 12]);
-    this.flush();
   }
 
   flush() {

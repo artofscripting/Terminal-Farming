@@ -30,6 +30,14 @@ const input = new WebInput(term);
 const game = new Game({ renderer, camera, input, save, onQuit: () => {} });
 
 window.addEventListener('resize', () => fit.fit());
+window.addEventListener('orientationchange', () => fit.fit());
+// Mobile browsers (notably iOS Safari) resize the *visual* viewport when
+// the address bar / on-screen keyboard shows or hides without necessarily
+// firing a plain `resize` event -- visualViewport is the reliable signal
+// there, and it's a no-op to also listen for it on desktop.
+if (window.visualViewport) {
+  window.visualViewport.addEventListener('resize', () => fit.fit());
+}
 term.onResize(({ cols, rows }) => game.resize(cols, rows));
 
 game.start();
