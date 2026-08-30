@@ -174,8 +174,8 @@ test('tractor: buy, mount, manual plow, and overnight auto-route burn fuel', () 
   state.player.y = tr.garage.y;
   state.weather = 'sunny';
   assert.match(machines.toggleMount(state), /Mounted/);
-  const msg = machines.tractorField(state, 'plow');
-  assert.match(msg, /Tractor plow/);
+  const res = machines.tractorField(state, 'plow');
+  assert.match(res.msg, /Tractor plow/);
   assert.ok(tr.fuel < 20, 'plowing consumed fuel');
 
   // Overnight auto-route plows the zone until fuel runs out.

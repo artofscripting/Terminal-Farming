@@ -207,27 +207,42 @@ function tractorEnergyCost(action) {
   return HAND_ENERGY_BY_IMPLEMENT[action]() / TRACTOR_ENERGY_DIVISOR;
 }
 
+// Rendering-relevant fields only, captured right before workTile mutates a
+// tile -- lets the UI layer play a tile-by-tile "before -> after" reveal
+// animation for a whole pass without machines.js knowing anything about
+// glyphs/colors itself (world/appearance.js's tileAppearance() derives
+// those from exactly this same shape, given either a live tile or one of
+// these snapshots).
+function snapshotTile(t) {
+  return { building: t.building, crop: t.crop ? { ...t.crop } : null, forage: t.forage, tilled: t.tilled, watered: t.watered, base: t.base };
+}
+
 // Manual tractor action over a 3x3 area, burning 1 fuel and some player
-// energy (see tractorEnergyCost) per tile worked.
+// energy (see tractorEnergyCost) per tile worked. `workedTiles` is
+// [{x, y, before}] in the order worked, purely for the UI's reveal
+// animation -- game logic elsewhere only needs `msg`.
 export function tractorField(state, action) {
   const tr = tractorState(state);
-  if (!tr.mounted) return null; // not driving
+  if (!tr.mounted) return { msg: null, workedTiles: [] }; // not driving
   const energyCost = tractorEnergyCost(action);
   let worked = 0;
+  const workedTiles = [];
   for (const [x, y] of area3x3(state.player.x, state.player.y)) {
     if (tr.fuel <= 0 || state.player.energy < energyCost) break;
+    const before = snapshotTile(state.world.getTile(x, y));
     if (workTile(state, action, x, y)) {
       tr.fuel -= 1;
       state.player.energy = Math.max(0, state.player.energy - energyCost);
       worked += 1;
+      workedTiles.push({ x, y, before });
     }
   }
   if (worked === 0) {
-    if (tr.fuel <= 0) return 'Out of fuel (buy a fuel can, shop 7).';
-    if (state.player.energy < energyCost) return 'Too tired to drive the tractor.';
-    return `Nothing to ${action} here.`;
+    if (tr.fuel <= 0) return { msg: 'Out of fuel (buy a fuel can, shop 7).', workedTiles };
+    if (state.player.energy < energyCost) return { msg: 'Too tired to drive the tractor.', workedTiles };
+    return { msg: `Nothing to ${action} here.`, workedTiles };
   }
-  return `Tractor ${action}: ${worked} tile${worked === 1 ? '' : 's'}. Fuel ${tr.fuel}/${tr.fuelCap}.`;
+  return { msg: `Tractor ${action}: ${worked} tile${worked === 1 ? '' : 's'}. Fuel ${tr.fuel}/${tr.fuelCap}.`, workedTiles };
 }
 
 // Manual (or auto-play-driven) whole-plot pass. `action` defaults to
@@ -244,26 +259,29 @@ export function tractorField(state, action) {
 // is standing in, in one call.
 export function tractorFieldPlot(state, action, skip) {
   const tr = tractorState(state);
-  if (!tr.mounted) return 'Mount the tractor first.';
+  if (!tr.mounted) return { msg: 'Mount the tractor first.', workedTiles: [] };
   const impl = action || tr.implement;
   const energyCost = tractorEnergyCost(impl);
   const plotId = plotIdAt(state.player.x, state.player.y);
   let worked = 0;
+  const workedTiles = [];
   for (const { x, y } of plotTiles(plotId)) {
     if (tr.fuel <= 0 || state.player.energy < energyCost) break;
     if (skip && skip(x, y)) continue;
+    const before = snapshotTile(state.world.getTile(x, y));
     if (workTile(state, impl, x, y)) {
       tr.fuel -= 1;
       state.player.energy = Math.max(0, state.player.energy - energyCost);
       worked += 1;
+      workedTiles.push({ x, y, before });
     }
   }
   if (worked === 0) {
-    if (tr.fuel <= 0) return 'Out of fuel (buy a fuel can, shop 7).';
-    if (state.player.energy < energyCost) return 'Too tired to drive the tractor.';
-    return `Nothing to ${impl} in this plot.`;
+    if (tr.fuel <= 0) return { msg: 'Out of fuel (buy a fuel can, shop 7).', workedTiles };
+    if (state.player.energy < energyCost) return { msg: 'Too tired to drive the tractor.', workedTiles };
+    return { msg: `Nothing to ${impl} in this plot.`, workedTiles };
   }
-  return `Tractor ${impl} (whole plot): ${worked} tile${worked === 1 ? '' : 's'}. Fuel ${tr.fuel}/${tr.fuelCap}.`;
+  return { msg: `Tractor ${impl} (whole plot): ${worked} tile${worked === 1 ? '' : 's'}. Fuel ${tr.fuel}/${tr.fuelCap}.`, workedTiles };
 }
 
 // Overnight: run the selected implement across the auto zone while fuelled.

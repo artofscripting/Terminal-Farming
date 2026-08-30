@@ -22,8 +22,11 @@ const HUD_ROWS = 2;
 // Bottom rows: one status line + one "Next:" hint line.
 const STATUS_ROWS = 2;
 
-// Render the full scene: HUD, map viewport, and status line.
-export function renderScene(renderer, camera, state) {
+// Render the full scene: HUD, map viewport, and status line. `overrides`
+// (Map<"wx,wy", {glyph,fg,ripe}>), if given, lets game.js's tractor
+// tile-reveal animation show a tile's pre-action appearance a beat longer
+// than the world state actually holds it -- see Game.queueTractorAnimation.
+export function renderScene(renderer, camera, state, overrides) {
   const w = renderer.width;
   const h = renderer.height;
   renderer.clear();
@@ -39,7 +42,8 @@ export function renderScene(renderer, camera, state) {
     for (let sx = 0; sx < w; sx++) {
       const { wx, wy } = camera.screenToWorld(sx, sy);
       const tile = state.world.getTile(wx, wy);
-      const { glyph, fg, ripe } = tileAppearance(tile);
+      const override = overrides && overrides.get(`${wx},${wy}`);
+      const { glyph, fg, ripe } = override || tileAppearance(tile);
       const owned = state.ownedPlots.has(plotIdAt(wx, wy));
       const bg = ripe ? RIPE_BG : tile.watered ? WATERED_BG : owned ? OWNED_BG : WORLD_BG;
       renderer.set(sx, mapTop + sy, glyph, fg, bg);

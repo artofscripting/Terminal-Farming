@@ -23,6 +23,7 @@ import { findPath } from './systems/pathfind.js';
 import { tryStep } from './systems/movement.js';
 import { autoPlayStep } from './systems/autoplay.js';
 import { renderScene } from './ui/render.js';
+import { tileAppearance } from './world/appearance.js';
 import * as menus from './ui/menus.js';
 
 loadContent();
@@ -35,6 +36,10 @@ const CUSTOM_PLOT_PRESETS = [1, 2, 3, 4, 5];
 const CUSTOM_SEASONS = ['spring', 'summer', 'fall', 'winter'];
 
 const NOTIFICATION_MS = 3000;
+const TILE_REVEAL_MS = 70;
+const AUTOPLAY_MOVE_MS = 100;
+const AUTOPLAY_ACTION_MS = 500;
+const AUTOPLAY_QUEST_EVENT_MS = 6000;
 // Matches the exact status-message formats their respective systems already
 // produce (stats.js's addStat, seedUnlocks.js's unlockSeed, quests.js's
 // turnInQuest/acceptQuest) -- setStatus() is the single chokepoint every one
@@ -94,6 +99,9 @@ export class Game {
     this.walkHomePath = null;
     this.walkHomeTimer = null;
     this.autoPlayTimer = null;
+    // Tractor whole-field/3x3 tile-reveal animation (see queueTractorAnimation).
+    this.revealQueue = [];
+    this.revealTimer = null;
   }
 
   start() {
@@ -132,6 +140,45 @@ export class Game {
         setTimeout(() => this.render(), NOTIFICATION_MS);
       }
     }
+  }
+
+  // ---- Tractor tile-reveal animation ----
+  // A whole-plot/3x3 tractor pass mutates every affected tile instantly
+  // (machines.js) -- game state is never mid-pass, only the *screen* lags
+  // behind on purpose. `workedTiles` is [{x, y, before}] in work order;
+  // each tile's pre-mutation appearance overrides its (already fully
+  // updated) real one in renderScene until its turn in the reveal queue
+  // comes up, TILE_REVEAL_MS apart, so the player watches the tractor sweep
+  // the field instead of seeing it flip to "done" all at once. Queuing
+  // (rather than one independent timer per call) means several tractor
+  // actions firing in quick succession -- e.g. auto-play's till-then-plant-
+  // then-water on the same plot -- animate as one continuous sweep.
+  queueTractorAnimation(workedTiles) {
+    if (!workedTiles || workedTiles.length === 0) return;
+    for (const t of workedTiles) {
+      this.revealQueue.push({ x: t.x, y: t.y, appearance: tileAppearance(t.before) });
+    }
+    if (!this.revealTimer) this.scheduleReveal();
+  }
+
+  // Rebuilt fresh from whatever's still queued, rather than kept in sync
+  // separately -- if the same tile appears more than once (worked again by
+  // a later action before its first reveal turn), whichever entry is still
+  // queued simply keeps showing its own "before" until ITS turn comes up.
+  currentTileOverrides() {
+    if (this.revealQueue.length === 0) return null;
+    const map = new Map();
+    for (const item of this.revealQueue) map.set(`${item.x},${item.y}`, item.appearance);
+    return map;
+  }
+
+  scheduleReveal() {
+    this.revealTimer = setTimeout(() => {
+      this.revealQueue.shift();
+      this.revealTimer = null;
+      if (this.revealQueue.length > 0) this.scheduleReveal();
+      this.render();
+    }, TILE_REVEAL_MS);
   }
 
   onKey(name, key, str) {
@@ -225,7 +272,12 @@ export class Game {
       case 'I': this.setStatus(installIrrigation(this.state)); break;
       case 'P': this.setStatus(installIrrigationPlot(this.state)); break;
       case 'W': this.setStatus(buyWell(this.state)); break;
-      case 'F': this.setStatus(tractorFieldPlot(this.state)); break;
+      case 'F': {
+        const res = tractorFieldPlot(this.state);
+        if (res.msg) this.setStatus(res.msg);
+        this.queueTractorAnimation(res.workedTiles);
+        break;
+      }
       case 'b': this.openKitchen(); break;
       case ';': this.mode = 'ranch'; break;
       case 'u': this.mode = 'labor'; break;
@@ -266,8 +318,9 @@ export class Game {
   field(footAction, tractorAction) {
     const tr = this.state.tractor;
     if (tr && tr.mounted) {
-      const msg = tractorField(this.state, tractorAction);
-      if (msg) this.setStatus(msg);
+      const res = tractorField(this.state, tractorAction);
+      if (res.msg) this.setStatus(res.msg);
+      this.queueTractorAnimation(res.workedTiles);
       return;
     }
     this.setStatus(farming[footAction](this.state));
@@ -324,16 +377,21 @@ export class Game {
     this.render();
   }
 
-  // ---- Auto-play (Z): one farming action every 100ms -- till, plant, water,
+  // ---- Auto-play (Z): one farming action at a time -- till, plant, water,
   // harvest, buy seed for whatever's open, or sleep -- fully autonomous.
+  // Movement (walking one tile toward a target) stays quick at 100ms;
+  // everything else -- the actual work -- paces at 500ms so it reads as a
+  // deliberate action instead of a blur. A quest accept/turn-in holds even
+  // longer (6s) so its banner has time to actually be read. Self-scheduling
+  // (setTimeout, not setInterval) since the delay varies tick to tick.
   startAutoPlay() {
     this.setStatus('Auto-play started.');
-    this.autoPlayTimer = setInterval(() => this.tickAutoPlay(), 100);
+    this.autoPlayTimer = setTimeout(() => this.tickAutoPlay(), AUTOPLAY_MOVE_MS);
   }
 
   stopAutoPlay(msg) {
     if (this.autoPlayTimer) {
-      clearInterval(this.autoPlayTimer);
+      clearTimeout(this.autoPlayTimer);
       this.autoPlayTimer = null;
     }
     if (msg) this.setStatus(msg);
@@ -341,16 +399,14 @@ export class Game {
 
   tickAutoPlay() {
     if (this.mode !== 'game') { this.stopAutoPlay(); return; }
-    // Hold a quest accept/turn-in on screen for 6s instead of letting the
-    // very next 100ms tick immediately overwrite it -- skip ticking (and
-    // rendering; nothing changed, so there's nothing new to draw) until
-    // that window elapses.
-    if (this.autoPlayPauseUntil && Date.now() < this.autoPlayPauseUntil) return;
-    const { msg, slept, questEvent } = autoPlayStep(this.state);
+    const { msg, slept, questEvent, animateTiles } = autoPlayStep(this.state);
     this.setStatus(msg, questEvent);
-    if (questEvent) this.autoPlayPauseUntil = Date.now() + 6000;
+    this.queueTractorAnimation(animateTiles);
     if (slept) this.save.save(this.state, 'auto');
     this.render();
+    if (!this.autoPlayTimer) return; // stopped synchronously via setStatus/render side effects
+    const delay = questEvent ? AUTOPLAY_QUEST_EVENT_MS : /^Walking \(/.test(msg) ? AUTOPLAY_MOVE_MS : AUTOPLAY_ACTION_MS;
+    this.autoPlayTimer = setTimeout(() => this.tickAutoPlay(), delay);
   }
 
   cycleSeed() {
@@ -727,7 +783,7 @@ export class Game {
     if (this.mode === 'save') { menus.renderSaveMenu(this.renderer, this.state, this.save.slotExists); return; }
     if (this.mode === 'load') { menus.renderLoadMenu(this.renderer, this.save.slotExists); return; }
     if (this.mode === 'pause') { menus.renderPause(this.renderer, this.ui.pauseConfirm); return; }
-    renderScene(this.renderer, this.camera, this.state);
+    renderScene(this.renderer, this.camera, this.state, this.currentTileOverrides());
   }
 
   renderShop() {

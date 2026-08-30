@@ -592,8 +592,16 @@ function runAt(state, x, y, footAction, tractorAction, skip, plotNeedCount) {
     const refuelMsg = tryRefuelTractor(state);
     if (refuelMsg) return tiredOrResult(state, refuelMsg);
   }
-  const msg = tractorReady(state) ? tractorFieldPlot(state, tractorAction, skip) : footAction(state);
-  return tiredOrResult(state, msg);
+  if (tractorReady(state)) {
+    const { msg, workedTiles } = tractorFieldPlot(state, tractorAction, skip);
+    const result = tiredOrResult(state, msg);
+    // Lets game.js play a tile-by-tile reveal animation for the pass; only
+    // meaningful for the UI layer, so plain string-returning callers of
+    // autoPlayStep (tests, etc.) can just ignore this extra field.
+    if (workedTiles.length > 0) result.animateTiles = workedTiles;
+    return result;
+  }
+  return tiredOrResult(state, footAction(state));
 }
 
 // How many tiles in `list` share a target tile's plot -- used to size a
