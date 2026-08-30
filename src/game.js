@@ -465,8 +465,22 @@ export class Game {
       const result = runCommand(this.state, line, {
         save: (slot) => this.save.save(this.state, slot),
         load: (slot) => this.save.load(slot),
+        exportSave: (arg) => this.save.exportSave(this.state, arg),
+        importSave: (arg) => {
+          // Shown immediately so the web file-picker case (which resolves
+          // later) isn't silent -- the CLI's synchronous read overwrites
+          // this again before the user ever sees it.
+          this.ui.consoleResult = { ok: true, msg: 'Importing…' };
+          this.render();
+          this.save.importSave(arg, (res) => {
+            if (res.ok) this.state = res.state;
+            this.ui.consoleResult = res.ok ? { ok: true, msg: 'Imported save from file.' } : { ok: false, msg: res.msg };
+            this.render();
+          });
+        },
       });
       if (result.loadedState) this.state = result.loadedState;
+      if (result.handled) { this.render(); return; }
       this.ui.consoleResult = result;
       this.render();
       return;
@@ -646,6 +660,10 @@ export class Game {
       this.setStatus(this.save.save(this.state, k));
       this.mode = 'game';
     }
+    if (k === 'x') {
+      this.setStatus(this.save.exportSave(this.state));
+      this.mode = 'game';
+    }
     this.render();
   }
 
@@ -658,6 +676,14 @@ export class Game {
       const loaded = this.save.load(slot);
       if (loaded) { this.state = loaded; this.mode = 'game'; this.setStatus(`Loaded slot ${slot}.`); }
       else this.setStatus('That slot is empty.');
+    }
+    if (k === 'i') {
+      this.save.importSave(undefined, (res) => {
+        if (res.ok) { this.state = res.state; this.mode = 'game'; this.setStatus('Imported save from file.'); }
+        else this.setStatus(res.msg);
+        this.render();
+      });
+      return;
     }
     this.render();
   }

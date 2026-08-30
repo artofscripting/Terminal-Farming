@@ -14,6 +14,8 @@ export const INFO_COMMANDS = {
   seed: 'Show the world seed',
   save: 'save <1-3|auto> -- save to a slot',
   load: 'load <1-3|auto> -- load a slot',
+  export: 'export [path] -- export the current save to a file (web: downloads it; CLI: writes to path, or saves/ if omitted)',
+  import: 'import [path] -- import a save from a file (web: opens a file picker and ignores this argument; CLI: requires path)',
 };
 
 // Cheat commands: require "cheatmode enable" first (except the toggle itself).
@@ -69,6 +71,16 @@ export function runCommand(state, line, io) {
       if (!loaded) return { ok: false, msg: `Slot ${slot} is empty.` };
       return { ok: true, msg: `Loaded slot ${slot}.`, loadedState: loaded };
     }
+    case 'export':
+      return { ok: true, msg: io.exportSave(args[0]) };
+    case 'import':
+      // io.importSave manages this.ui.consoleResult/render itself, since a
+      // file read may finish asynchronously (web's file picker) or
+      // synchronously (the CLI's fs read) -- either way, the caller must not
+      // also assign a result here or it'll race/overwrite whichever result
+      // the callback already set.
+      io.importSave(args[0]);
+      return { handled: true };
     case 'addgold': {
       const n = Number(args[0]);
       if (!Number.isFinite(n)) return { ok: false, msg: 'Usage: addgold <amount>' };

@@ -412,7 +412,9 @@ On festival day you can visit, enter a **crop contest**, and buy a **seed booth*
 | `v` / `F5` | Manual save slots 1–3 |
 | `F9` / title `2` | Load |
 
-Saves live under the `saves/` folder as JSON. Older save versions migrate forward when loaded.
+Saves live under the `saves/` folder as JSON (CLI) or in the browser's local storage (web build). Older save versions migrate forward when loaded.
+
+**Import/export**, for moving a save between browsers or machines: in the save menu, `x` exports the current game — on the web build this downloads a `.json` file; on the CLI it writes one to `saves/export-<timestamp>.json`. In the load menu, `i` imports one back — a file picker on the web build, or (from the console, `/`) `import <path>` on the CLI, since there's no file picker in a terminal. The console also has `export [path]` as the CLI's path-specifying equivalent of the `x` key.
 
 ---
 

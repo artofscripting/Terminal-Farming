@@ -561,7 +561,8 @@ export function renderSaveMenu(renderer, state, slotExists) {
     const exists = slotExists(String(i));
     row(renderer, 2 + i, String(i), `Slot ${i}${exists ? '  (overwrite)' : '  (empty)'}`);
   }
-  renderer.text(2, renderer.height - 2, 'Press 1-3 to save.', DIM, PANEL_BG);
+  row(renderer, 7, 'x', 'Export to file (web: downloads it; CLI: saves/export-*.json)');
+  renderer.text(2, renderer.height - 2, 'Press 1-3 to save, x to export.', DIM, PANEL_BG);
 }
 
 // Load-slot menu. `slotExists` abstracts over the active save backend.
@@ -575,8 +576,9 @@ export function renderLoadMenu(renderer, slotExists) {
   }
   const autoExists = slotExists('auto');
   row(renderer, 6, 'a', `Autosave${autoExists ? '' : '  (empty)'}`, autoExists ? TEXT : DIM);
+  row(renderer, 7, 'i', 'Import from file (web: file picker; CLI: use console "import <path>")');
   if (!any && !autoExists) renderer.text(3, 3, 'No saves found.', DIM, PANEL_BG);
-  renderer.text(2, renderer.height - 2, 'Press 1-3 or a to load.', DIM, PANEL_BG);
+  renderer.text(2, renderer.height - 2, 'Press 1-3 or a to load, i to import.', DIM, PANEL_BG);
 }
 
 // Pause menu (Esc / q from the game view). `confirm` is null | 'restart' | 'quit'.
