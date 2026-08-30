@@ -17,9 +17,13 @@ function slotPath(slot) {
 export { serialize };
 
 export function save(state, slot = 'auto') {
-  ensureDir();
-  fs.writeFileSync(slotPath(slot), JSON.stringify(serialize(state)));
-  return `Saved (slot ${slot}).`;
+  try {
+    ensureDir();
+    fs.writeFileSync(slotPath(slot), JSON.stringify(serialize(state)));
+    return `Saved (slot ${slot}).`;
+  } catch (err) {
+    return `Save failed: ${err.message || 'disk unavailable'}.`;
+  }
 }
 
 export function hasSaves() {

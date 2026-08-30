@@ -9,8 +9,15 @@ function keyFor(slot) {
 export { serialize };
 
 export function save(state, slot = 'auto') {
-  localStorage.setItem(keyFor(slot), JSON.stringify(serialize(state)));
-  return `Saved (slot ${slot}).`;
+  try {
+    localStorage.setItem(keyFor(slot), JSON.stringify(serialize(state)));
+    return `Saved (slot ${slot}).`;
+  } catch (err) {
+    // Private browsing (notably Safari) and full storage quotas throw here
+    // instead of failing quietly -- surface it so the player isn't left
+    // staring at a save menu that appears to do nothing.
+    return `Save failed: ${err.message || 'storage unavailable'}.`;
+  }
 }
 
 export function hasSaves() {
