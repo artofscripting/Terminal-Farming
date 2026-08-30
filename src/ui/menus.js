@@ -19,7 +19,7 @@ import { statsOf } from '../systems/stats.js';
 import { ACHIEVEMENTS } from '../content/achievements.js';
 import {
   seedDiscount, farmingYieldBonusChance, husbandryQualityBonus,
-  culinaryQualityBonus, charmRewardMultiplier, charmBonusHearts,
+  culinaryQualityBonus, charmRewardMultiplier, charmBonusHearts, xpToNextLevel,
 } from '../systems/skills.js';
 import { keyLabel, lookupKey, lookupMapGlyph } from './keyReference.js';
 import { count as invCount, countBase } from '../systems/inventory.js';
@@ -369,23 +369,23 @@ export function renderSkills(renderer, state) {
   panel(renderer, 'Skills');
   const sk = state.player.skills;
   let y = 3;
-  const entry = (label, s, perk) => {
-    renderer.text(3, y, `${label.padEnd(10)} Lv ${String(s.level).padEnd(2)} XP ${Math.floor(s.xp)}/50`, TITLE, PANEL_BG);
+  const entry = (id, label, s, perk) => {
+    renderer.text(3, y, `${label.padEnd(10)} Lv ${String(s.level).padEnd(2)} XP ${Math.floor(s.xp)}/${xpToNextLevel(id, s.level)}`, TITLE, PANEL_BG);
     renderer.text(5, y + 1, perk, TEXT, PANEL_BG);
     y += 2;
   };
 
-  entry('Farming', sk.farming,
+  entry('farming', 'Farming', sk.farming,
     `+2% max energy/lvl \u00b7 cheaper till Lv8 \u00b7 cheaper drought water Lv5 \u00b7 +${Math.round(farmingYieldBonusChance(state) * 100)}% bonus yield chance`);
-  entry('Foraging', sk.foraging,
+  entry('foraging', 'Foraging', sk.foraging,
     `Lv3 unlocks truffles \u00b7 Lv5 chance of double gathers`);
-  entry('Trading', sk.trading,
+  entry('trading', 'Trading', sk.trading,
     `-${Math.round(seedDiscount(state) * 100)}% seed prices (gain XP from selling)`);
-  entry('Husbandry', sk.husbandry,
+  entry('husbandry', 'Husbandry', sk.husbandry,
     `+${Math.round(husbandryQualityBonus(state) * 100)}% chance of higher-quality eggs/milk`);
-  entry('Culinary', sk.culinary,
+  entry('culinary', 'Culinary', sk.culinary,
     `+${Math.round(culinaryQualityBonus(state) * 100)}% chance of higher-quality dishes`);
-  entry('Charm', sk.charm,
+  entry('charm', 'Charm', sk.charm,
     `+${Math.round((charmRewardMultiplier(state) - 1) * 100)}% quest gold${charmBonusHearts(state) ? ', +1 bonus heart' : ' (Lv10: +1 bonus heart)'}`);
 
   renderer.text(2, renderer.height - 1, 'q back', DIM, PANEL_BG);

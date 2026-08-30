@@ -13,6 +13,7 @@ import { SEED_PLANT_COST } from '../systems/seedplant.js';
 import { BUNKHOUSE_UPGRADE_COST } from '../systems/labor.js';
 import { RANCH_BUILDINGS, buildingLevelDef, animalDef } from '../content/animals.js';
 import { WORKSHOPS } from '../content/workshops.js';
+import { xpToNextLevel } from '../systems/skills.js';
 
 const OWNED_BG = [18, 30, 18];
 const WORLD_BG = [8, 10, 12];
@@ -225,7 +226,7 @@ function drawHud(renderer, state, w) {
   const q = activeCount(state);
   const farm = p.skills.farming;
   const forage = p.skills.foraging;
-  const line2 = ` Farm L${farm.level} (${Math.floor(farm.xp)}/50xp)  Forage L${forage.level} (${Math.floor(forage.xp)}/50xp)  |  Seed: ${seed} x${seedCount}  |  Fert: ${fert}  |  Plots: ${state.ownedPlots.size}  |  Q${q}  |  Value ${farmValue(state)}g`;
+  const line2 = ` Farm L${farm.level} (${Math.floor(farm.xp)}/${xpToNextLevel('farming', farm.level)}xp)  Forage L${forage.level} (${Math.floor(forage.xp)}/${xpToNextLevel('foraging', forage.level)}xp)  |  Seed: ${seed} x${seedCount}  |  Fert: ${fert}  |  Plots: ${state.ownedPlots.size}  |  Q${q}  |  Value ${farmValue(state)}g`;
   renderer.text(0, 1, line2, HUD_FG, [20, 22, 26]);
 
   // Plot info for the tile under the player (right-aligned on line 2).

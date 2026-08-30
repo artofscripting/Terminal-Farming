@@ -21,14 +21,24 @@ const XP_RATE = 1 / 3; // all skill XP gains 3x slower
 const XP_GAIN_MULT = 1 / 20; // balance pass: further 20x reduction on top of XP_RATE
 const XP_GAIN_MULT_2 = 1 / 3; // balance pass: a further 3x reduction on top of the above two
 const FARMING_MAXENERGY_PCT_PER_LEVEL = 0.02; // balance pass: +2% of current max energy per level, not a flat amount
+const FARMING_XP_GROWTH = 1.1; // each farming level costs 10% more XP than the last
+
+// XP needed to advance from `level` to the next one. Every skill costs a
+// flat XP_PER_LEVEL except farming, whose cost compounds 10% per level (Lv1
+// costs the base 50, Lv2 costs 55, Lv3 costs 60.5, ...).
+export function xpToNextLevel(skill, level) {
+  if (skill === 'farming') return Math.round(XP_PER_LEVEL * Math.pow(FARMING_XP_GROWTH, level - 1));
+  return XP_PER_LEVEL;
+}
 
 export function gainXp(state, skill, amount) {
   ensureSkills(state.player);
   const s = state.player.skills[skill];
   if (!s) return;
   s.xp += amount * XP_RATE * XP_GAIN_MULT * XP_GAIN_MULT_2;
-  while (s.xp >= XP_PER_LEVEL) {
-    s.xp -= XP_PER_LEVEL;
+  let needed = xpToNextLevel(skill, s.level);
+  while (s.xp >= needed) {
+    s.xp -= needed;
     s.level += 1;
     if (skill === 'farming') {
       // README perk. Rounded to the same 0.01 precision energy is tracked
@@ -37,6 +47,7 @@ export function gainXp(state, skill, amount) {
       const p = state.player;
       p.maxEnergy = Math.round(p.maxEnergy * (1 + FARMING_MAXENERGY_PCT_PER_LEVEL) * 100) / 100;
     }
+    needed = xpToNextLevel(skill, s.level);
   }
 }
 
