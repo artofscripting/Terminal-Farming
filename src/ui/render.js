@@ -7,6 +7,7 @@ import { npcDef } from '../content/npcs.js';
 import { hasNearbyWater, IRRIGATION_COST } from '../systems/irrigation.js';
 import { count } from '../systems/inventory.js';
 import { forecastWeather } from '../systems/calendar.js';
+import { sellableItems } from '../systems/economy.js';
 
 const OWNED_BG = [18, 30, 18];
 const WORLD_BG = [8, 10, 12];
@@ -138,6 +139,17 @@ function tileInfoLines(state, tile, x, y) {
 }
 
 
+// Net worth shown in the HUD: cash on hand, plus what owned land would sell
+// for and what's currently sitting in the sell-crops/forage/goods/dishes
+// inventory would fetch at today's prices. Tools, buildings, tractor, and
+// livestock aren't included -- there's no sell-back price for any of them.
+function farmValue(state) {
+  let value = state.player.gold;
+  for (const plotId of state.ownedPlots) value += priceOfPlot(state, plotId);
+  for (const item of sellableItems(state)) value += item.price * item.qty;
+  return value;
+}
+
 function drawHud(renderer, state, w) {
   const c = state.calendar;
   const p = state.player;
@@ -157,7 +169,7 @@ function drawHud(renderer, state, w) {
   const q = activeCount(state);
   const farm = p.skills.farming;
   const forage = p.skills.foraging;
-  const line2 = ` Farm L${farm.level} (${Math.floor(farm.xp)}/50xp)  Forage L${forage.level} (${Math.floor(forage.xp)}/50xp)  |  Seed: ${seed} x${seedCount}  |  Fert: ${fert}  |  Plots: ${state.ownedPlots.size}  |  Q${q}`;
+  const line2 = ` Farm L${farm.level} (${Math.floor(farm.xp)}/50xp)  Forage L${forage.level} (${Math.floor(forage.xp)}/50xp)  |  Seed: ${seed} x${seedCount}  |  Fert: ${fert}  |  Plots: ${state.ownedPlots.size}  |  Q${q}  |  Value ${farmValue(state)}g`;
   renderer.text(0, 1, line2, HUD_FG, [20, 22, 26]);
 
   // Plot info for the tile under the player (right-aligned on line 2).
