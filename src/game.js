@@ -27,6 +27,13 @@ import * as menus from './ui/menus.js';
 
 loadContent();
 
+// Custom-game setup presets (title screen option 3). Plot counts are TOTAL
+// owned plots at spawn (home plot included) -- newGame's own `plots` option
+// wants the count of EXTRA plots beyond the home one, so callers subtract 1.
+const CUSTOM_GOLD_PRESETS = [100, 250, 500, 1000, 2500, 5000, 10000, 25000, 50000];
+const CUSTOM_PLOT_PRESETS = [1, 2, 3, 4, 5];
+const CUSTOM_SEASONS = ['spring', 'summer', 'fall', 'winter'];
+
 // Platform-agnostic game/UI state machine. Takes its I/O and storage as
 // injected dependencies so the same class drives both the Node terminal CLI
 // (src/main.js) and the browser build (src/web/main.js).
@@ -79,6 +86,7 @@ export class Game {
     const k = str && str.length === 1 && str.charCodeAt(0) >= 32 ? str : name;
     switch (this.mode) {
       case 'title': return this.keyTitle(k);
+      case 'customgame': return this.keyCustomGame(k);
       case 'game': return this.keyGame(k);
       case 'help': return this.keyHelp(k);
       case 'inventory': return this.keyInventory(k);
@@ -107,8 +115,33 @@ export class Game {
       this.mode = 'game';
     } else if (k === '2' && this.save.hasSaves()) {
       this.mode = 'load';
+    } else if (k === '3') {
+      this.ui.customGame = this.ui.customGame || {
+        goldIdx: CUSTOM_GOLD_PRESETS.indexOf(500),
+        plotsIdx: 0,
+        seasonIdx: 0,
+      };
+      this.mode = 'customgame';
     } else if (k === 'q') {
       this.quit();
+    }
+    this.render();
+  }
+
+  // ---- Custom game setup ----
+  keyCustomGame(k) {
+    const c = this.ui.customGame;
+    if (k === 'q' || k === 'escape') { this.mode = 'title'; this.render(); return; }
+    if (k === '1') c.goldIdx = (c.goldIdx + 1) % CUSTOM_GOLD_PRESETS.length;
+    else if (k === '2') c.plotsIdx = (c.plotsIdx + 1) % CUSTOM_PLOT_PRESETS.length;
+    else if (k === '3') c.seasonIdx = (c.seasonIdx + 1) % CUSTOM_SEASONS.length;
+    else if (k === 'enter') {
+      this.state = newGame(undefined, {
+        gold: CUSTOM_GOLD_PRESETS[c.goldIdx],
+        plots: CUSTOM_PLOT_PRESETS[c.plotsIdx] - 1, // presets are TOTAL plots; newGame wants extra beyond the home one
+        season: CUSTOM_SEASONS[c.seasonIdx],
+      });
+      this.mode = 'game';
     }
     this.render();
   }
@@ -589,6 +622,10 @@ export class Game {
   // ---- Render dispatch ----
   render() {
     if (this.mode === 'title') return this.renderTitle();
+    if (this.mode === 'customgame') {
+      menus.renderCustomGame(this.renderer, this.ui.customGame, CUSTOM_GOLD_PRESETS, CUSTOM_PLOT_PRESETS, CUSTOM_SEASONS);
+      return this.flush();
+    }
     if (this.mode === 'help') {
       if (this.ui.helpLookup) menus.renderKeyLookup(this.renderer, this.ui.helpLookup);
       else menus.renderHelp(this.renderer, this.ui.helpPage);
@@ -651,8 +688,9 @@ export class Game {
     r.text(cx - 12, 8, '1  New game', [220, 220, 210], [10, 16, 12]);
     const loadColor = this.save.hasSaves() ? [220, 220, 210] : [90, 90, 90];
     r.text(cx - 12, 9, '2  Load game', loadColor, [10, 16, 12]);
-    r.text(cx - 12, 10, 'q  Quit', [220, 220, 210], [10, 16, 12]);
-    r.text(cx - 12, 13, 'Buy plots, farm the world.', [150, 180, 150], [10, 16, 12]);
+    r.text(cx - 12, 10, '3  Custom game', [220, 220, 210], [10, 16, 12]);
+    r.text(cx - 12, 11, 'q  Quit', [220, 220, 210], [10, 16, 12]);
+    r.text(cx - 12, 14, 'Buy plots, farm the world.', [150, 180, 150], [10, 16, 12]);
     this.flush();
   }
 

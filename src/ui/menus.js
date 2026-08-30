@@ -602,6 +602,19 @@ export function renderPause(renderer, confirm) {
   renderer.text(2, renderer.height - 2, 'Esc to resume.', DIM, PANEL_BG);
 }
 
+// Custom game setup (title screen option 3). `c` is the draft state game.js
+// owns (goldIdx/plotsIdx/seasonIdx); the preset lists are passed in from
+// there too, so this stays pure display -- game.js's key handler does the
+// actual cycling and, on Enter, builds the newGame() options from them.
+export function renderCustomGame(renderer, c, goldPresets, plotPresets, seasons) {
+  panel(renderer, 'Custom Game');
+  row(renderer, 3, '1', `Starting gold: ${goldPresets[c.goldIdx]}g`);
+  row(renderer, 4, '2', `Starting plots: ${plotPresets[c.plotsIdx]}`);
+  row(renderer, 5, '3', `Starting season: ${cap(seasons[c.seasonIdx])}`);
+  renderer.text(3, 7, 'Enter  Start game', TITLE, PANEL_BG);
+  renderer.text(2, renderer.height - 2, 'Press 1-3 to cycle a setting.', DIM, PANEL_BG);
+}
+
 // Festival / calendar screen.
 export function renderFestival(renderer, state) {
   const c = state.calendar;

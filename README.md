@@ -1,7 +1,9 @@
 |# Terminal Harvest
 
 
-**Title screen:** `1` new game · `2` load (if saves exist) · `q` quit
+**Title screen:** `1` new game · `2` load (if saves exist) · `3` custom game (set starting gold, plots, and season) · `q` quit
+
+**Custom game (`3`):** press `1`/`2`/`3` to cycle each setting through its own preset list, then **Enter** to start — starting gold (100g–50,000g), starting plots (1–5, extras beyond the home plot are cleared and tilled the same way a paid expansion is, free), and starting season. `1` new game always uses the defaults (500g, 1 plot, spring).
 
 In-game help is always available with **`?`** — press any other key afterward to look up what it does (and what it means on the map, if it's also a glyph). A command console is available with **`/`**.
 

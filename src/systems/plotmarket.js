@@ -120,7 +120,7 @@ export function priceOfPlot(state, plotId) {
 // land purchase, not a chopping action) and every tillable tile starts
 // already tilled, so the plot never needs a manual clear-and-till pass
 // before the first planting.
-function clearAndTillPlot(state, plotId) {
+export function clearAndTillPlot(state, plotId) {
   for (const { x, y } of plotTiles(plotId)) {
     const t = state.world.getTile(x, y);
     if (t.base === 'tree') t.base = 'grass';

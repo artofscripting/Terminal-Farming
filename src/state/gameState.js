@@ -4,13 +4,17 @@ import { plotIdAt, plotBounds, plotTiles } from '../world/plots.js';
 import { Crops } from '../content/registry.js';
 import { ensureSkills } from '../systems/skills.js';
 import { emptyStats } from '../systems/stats.js';
+import { nextExpansionPlot, clearAndTillPlot } from '../systems/plotmarket.js';
 
 export const SEASONS = ['spring', 'summer', 'fall', 'winter'];
 export const DAYS_PER_SEASON = 28;
 
-// Clear the starter plot to farmable grass, stamp a house, and grant ownership.
-// Returns the tile the player should spawn on (next to the house).
-function setupStarterFarm(state) {
+// Clear the starter plot to farmable grass, stamp a house, and grant
+// ownership -- plus `extraPlots` more owned plots beyond the home one, found
+// and cleared/tilled the same way a paid expansion would be (free, since
+// these are a starting grant, not a purchase). Returns the tile the player
+// should spawn on (next to the house).
+function setupStarterFarm(state, extraPlots = 0) {
   const origin = findStarterPlotOrigin(state.seed);
   const plotId = plotIdAt(origin.x, origin.y);
 
@@ -34,13 +38,24 @@ function setupStarterFarm(state) {
   state.world.touch(houseX, houseY);
 
   state.ownedPlots.add(plotId);
+  for (let i = 0; i < extraPlots; i++) {
+    const nextPlotId = nextExpansionPlot(state);
+    if (!nextPlotId) break; // nothing ownable found within the search bound
+    state.ownedPlots.add(nextPlotId);
+    clearAndTillPlot(state, nextPlotId);
+  }
   return { x: houseX, y: houseY + 1 };
 }
 
-// Create a fresh game state for a new game.
-export function newGame(seed = (Math.random() * 0xffffffff) >>> 0) {
+// Create a fresh game state for a new game. `options` (all optional) let a
+// custom-game setup override the defaults: gold, plots (extra owned plots
+// beyond the home one), season (starting season name).
+export function newGame(seed = (Math.random() * 0xffffffff) >>> 0, options = {}) {
   const world = new World(seed);
   const seeds = Crops.all().map((c) => c.id);
+  const startGold = options.gold ?? 500;
+  const startSeason = SEASONS.includes(options.season) ? options.season : 'spring';
+  const extraPlots = Math.max(0, Math.floor(options.plots || 0));
 
   const state = {
     seed,
@@ -48,7 +63,7 @@ export function newGame(seed = (Math.random() * 0xffffffff) >>> 0) {
     player: {
       x: 0,
       y: 0,
-      gold: 500,
+      gold: startGold,
       energy: 350,
       maxEnergy: 350,
       inventory: { seeds: {}, crops: {}, forage: {} },
@@ -57,7 +72,7 @@ export function newGame(seed = (Math.random() * 0xffffffff) >>> 0) {
       selectedSeed: seeds[0] || null,
       selectedFertilizer: null,
     },
-    calendar: { year: 1, season: 'spring', day: 1 },
+    calendar: { year: 1, season: startSeason, day: 1 },
     weather: 'sunny',
     ownedPlots: new Set(),
     stats: emptyStats(),
@@ -66,7 +81,7 @@ export function newGame(seed = (Math.random() * 0xffffffff) >>> 0) {
     running: true,
   };
 
-  const spawn = setupStarterFarm(state);
+  const spawn = setupStarterFarm(state, extraPlots);
   state.player.x = spawn.x;
   state.player.y = spawn.y;
   state.home = { x: spawn.x, y: spawn.y }; // where "walk home" (H) heads to
