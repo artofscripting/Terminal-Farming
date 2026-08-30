@@ -69,15 +69,22 @@ export function isFarmable(world, wx, wy) {
   return OWNABLE_BASES.has(t.base) || t.tilled || Boolean(t.crop);
 }
 
-// A plot is ownable if it contains enough farmable land and no buildings/roads.
+// A plot is ownable if it contains enough farmable land, isn't mostly water,
+// and has no buildings/roads.
 export function plotOwnable(world, plotId) {
   let farmable = 0;
+  let water = 0;
+  let total = 0;
   for (const { x, y } of plotTiles(plotId)) {
     const t = world.getTile(x, y);
     if (t.building || t.base === 'road' || t.base === 'plaza') return false;
     if (OWNABLE_BASES.has(t.base)) farmable++;
+    if (t.base === 'water') water++;
+    total++;
   }
-  return farmable >= 24; // at least ~40% of a 64-tile plot
+  if (farmable < 24) return false; // at least ~40% of a 64-tile plot
+  if (water > total * 0.4) return false; // reject plots that are mostly water
+  return true;
 }
 
 function distanceToNearestTown(seed, cx, cy) {
