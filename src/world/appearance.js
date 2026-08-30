@@ -27,6 +27,7 @@ export function tileAppearance(tile) {
       return {
         glyph: ripe ? def.glyphRipe : def.glyphGrow,
         fg: hexToRgb(ripe ? (def.colorRipe || def.color) : def.color),
+        ripe,
       };
     }
   }

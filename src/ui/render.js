@@ -11,6 +11,7 @@ import { forecastWeather } from '../systems/calendar.js';
 const OWNED_BG = [18, 30, 18];
 const WORLD_BG = [8, 10, 12];
 const WATERED_BG = [20, 45, 100];
+const RIPE_BG = [70, 45, 20];
 const HUD_FG = [220, 220, 200];
 const ACCENT = [240, 220, 120];
 const WARN = [230, 120, 120];
@@ -38,9 +39,9 @@ export function renderScene(renderer, camera, state) {
     for (let sx = 0; sx < w; sx++) {
       const { wx, wy } = camera.screenToWorld(sx, sy);
       const tile = state.world.getTile(wx, wy);
-      const { glyph, fg } = tileAppearance(tile);
+      const { glyph, fg, ripe } = tileAppearance(tile);
       const owned = state.ownedPlots.has(plotIdAt(wx, wy));
-      const bg = tile.watered ? WATERED_BG : owned ? OWNED_BG : WORLD_BG;
+      const bg = ripe ? RIPE_BG : tile.watered ? WATERED_BG : owned ? OWNED_BG : WORLD_BG;
       renderer.set(sx, mapTop + sy, glyph, fg, bg);
     }
   }
@@ -48,8 +49,9 @@ export function renderScene(renderer, camera, state) {
   // Player overlay at viewport center.
   const { sx, sy } = camera.worldToScreen(state.player.x, state.player.y);
   const pTile = state.world.getTile(state.player.x, state.player.y);
+  const pRipe = tileAppearance(pTile).ripe;
   const glyph = state.tractor?.mounted ? 'T' : '@';
-  renderer.set(sx, mapTop + sy, glyph, [255, 255, 120], pTile.watered ? WATERED_BG : WORLD_BG);
+  renderer.set(sx, mapTop + sy, glyph, [255, 255, 120], pRipe ? RIPE_BG : pTile.watered ? WATERED_BG : WORLD_BG);
 
   drawTilePanel(renderer, state, w, mapTop, mapHeight);
 
