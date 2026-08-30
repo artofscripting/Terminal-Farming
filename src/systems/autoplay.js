@@ -577,21 +577,33 @@ function walkableNeighbor(state, bx, by, offsets = ALL_8_OFFSETS) {
 // the one tile the player is standing on anyway. Tractor failure messages
 // ("Out of fuel...", "Nothing to X here.") never match "tired", so they
 // fall through as an ordinary non-sleep result and the next tick just
-// re-picks a target. If the tractor is mounted but ran dry mid-plot,
-// refuels first (tryRefuelTractor) rather than falling back to hand tools
-// -- otherwise a large field with more untilled/unplanted tiles than one
-// tank of fuel would finish its first pass, then grind through the rest one
-// tile at a time by hand forever, even with plenty of gold to just refill.
-function runAt(state, x, y, footAction, tractorAction, skip) {
+// re-picks a target. `plotNeedCount`, if given, is how many tiles in this
+// plot actually need this action -- if the tank can't cover that whole
+// amount (not just if it's already fully dry), refuels first
+// (tryRefuelTractor) rather than starting a partial pass that would just
+// run dry mid-plot and fall back to hand tools for the rest, or need a
+// separate refuel-then-resume tick of its own. Callers that don't know (or
+// don't need) a count can omit it, which keeps the old fuel<=0-only trigger.
+function runAt(state, x, y, footAction, tractorAction, skip, plotNeedCount) {
   const walkMsg = stepToward(state, x, y);
   if (walkMsg) return tiredOrResult(state, walkMsg);
   const tr = state.tractor;
-  if (tr && tr.mounted && tr.fuel <= 0) {
+  if (tr && tr.mounted && (tr.fuel <= 0 || (plotNeedCount > 0 && tr.fuel < plotNeedCount))) {
     const refuelMsg = tryRefuelTractor(state);
     if (refuelMsg) return tiredOrResult(state, refuelMsg);
   }
   const msg = tractorReady(state) ? tractorFieldPlot(state, tractorAction, skip) : footAction(state);
   return tiredOrResult(state, msg);
+}
+
+// How many tiles in `list` share a target tile's plot -- used to size a
+// proactive tractor refuel to "enough to finish this whole plot's pending
+// work", not just "enough for one more tile".
+function tilesNeededInPlot(list, x, y) {
+  const plotId = plotIdAt(x, y);
+  let n = 0;
+  for (const t of list) if (plotIdAt(t.x, t.y) === plotId) n++;
+  return n;
 }
 
 // Buy the first tractor the instant it's affordable at all -- not gated by
@@ -864,11 +876,11 @@ export function autoPlayStep(state) {
     return def && tile.crop.stage >= def.stages;
   }).filter(notBlocked(state));
   const toHarvest = nearestTo(p, ripe);
-  if (toHarvest) return runAt(state, toHarvest.x, toHarvest.y, farming.harvest, 'harvest');
+  if (toHarvest) return runAt(state, toHarvest.x, toHarvest.y, farming.harvest, 'harvest', undefined, tilesNeededInPlot(ripe, toHarvest.x, toHarvest.y));
 
   const thirsty = tiles.filter(({ tile }) => tile.tilled && tile.crop && !tile.watered).filter(notBlocked(state));
   const toWater = nearestTo(p, thirsty);
-  if (toWater) return runAt(state, toWater.x, toWater.y, farming.water, 'water');
+  if (toWater) return runAt(state, toWater.x, toWater.y, farming.water, 'water', undefined, tilesNeededInPlot(thirsty, toWater.x, toWater.y));
 
   const forageMsg = tryGatherForage(state, tiles);
   if (forageMsg) return tiredOrResult(state, forageMsg);
@@ -943,13 +955,18 @@ export function autoPlayStep(state) {
   if (canPlantSelected) {
     const emptyTilled = tiles.filter(({ tile }) => tile.tilled && !tile.crop).filter(notReserved).filter(notBlocked(state));
     const toPlant = nearestTo(p, emptyTilled);
-    if (toPlant) return runAt(state, toPlant.x, toPlant.y, farming.plant, 'seed', isReserved);
+    if (toPlant) {
+      // Bounded by seed inventory too, not just fuel -- refueling for more
+      // than there's seed to plant would just top off the tank for nothing.
+      const need = Math.min(tilesNeededInPlot(emptyTilled, toPlant.x, toPlant.y), count(p.inventory, 'seeds', seedId));
+      return runAt(state, toPlant.x, toPlant.y, farming.plant, 'seed', isReserved, need);
+    }
   }
 
   const untilled = tiles.filter(({ tile }) => !tile.tilled && !tile.crop && TILLABLE.includes(tile.base))
     .filter(notReserved).filter(notBlocked(state));
   const toTill = nearestTo(p, untilled);
-  if (toTill) return runAt(state, toTill.x, toTill.y, farming.till, 'plow', isReserved);
+  if (toTill) return runAt(state, toTill.x, toTill.y, farming.till, 'plow', isReserved, tilesNeededInPlot(untilled, toTill.x, toTill.y));
 
   // Nothing left to till on ground that's already clear -- reclaim more of
   // it by chopping a tree before spending any gold (on seed, upgrades, or
