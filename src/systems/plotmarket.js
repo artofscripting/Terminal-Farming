@@ -69,8 +69,8 @@ export function isFarmable(world, wx, wy) {
   return OWNABLE_BASES.has(t.base) || t.tilled || Boolean(t.crop);
 }
 
-// A plot is ownable if it contains enough farmable land, isn't mostly water,
-// and has no buildings/roads.
+// A plot is ownable if more than 60% of it is tillable land, it isn't mostly
+// water, and it has no buildings/roads.
 export function plotOwnable(world, plotId) {
   let farmable = 0;
   let water = 0;
@@ -82,7 +82,7 @@ export function plotOwnable(world, plotId) {
     if (t.base === 'water') water++;
     total++;
   }
-  if (farmable < 24) return false; // at least ~40% of a 64-tile plot
+  if (farmable <= total * 0.6) return false;
   if (water > total * 0.4) return false; // reject plots that are mostly water
   return true;
 }
