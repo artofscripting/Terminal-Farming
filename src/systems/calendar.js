@@ -60,7 +60,7 @@ function fertEffects(tile) {
 function growTile(state, tile, rand, x, y) {
   const eff = fertEffects(tile);
   const rained = state.weather === 'rain';
-  const irrigated = Boolean(tile.irrigation && tile.crop && hasNearbyWater(state.world, x, y));
+  const irrigated = Boolean(tile.irrigation && hasNearbyWater(state.world, x, y));
   if (rained || irrigated) tile.watered = true;
 
   // Frost can kill crops that don't grow in winter (and aren't fertilizer-protected).

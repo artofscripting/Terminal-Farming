@@ -47,6 +47,8 @@ Energy drops with actions. Sleep restores it. Eat cooked food in the kitchen whe
 
 All of the above (except movement and `P`) act only **on the tile you're standing on** — `P` covers every eligible tile in the whole plot, and `T` is the one exception that acts on a *neighboring* tile instead, since trees (like rock and water) are never walkable.
 
+**Irrigated ground with a water source in range (a natural water tile or a well) always shows watered** — overnight, whether or not anything's currently planted there, and it stays watered right through a harvest instead of resetting to dry, so a regrow crop or a freshly re-tilled spot never needs a manual re-water first.
+
 ### Menus & meta
 
 | Key | Action |

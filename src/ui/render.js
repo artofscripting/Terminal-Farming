@@ -10,7 +10,7 @@ import { forecastWeather } from '../systems/calendar.js';
 
 const OWNED_BG = [18, 30, 18];
 const WORLD_BG = [8, 10, 12];
-const WATERED_BG = [90, 150, 210];
+const WATERED_BG = [20, 45, 100];
 const HUD_FG = [220, 220, 200];
 const ACCENT = [240, 220, 120];
 const WARN = [230, 120, 120];

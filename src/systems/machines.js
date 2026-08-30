@@ -7,6 +7,7 @@ import { plotIdAt, plotTiles } from '../world/plots.js';
 import { ranchState } from './ranch.js';
 import { gainXp } from './skills.js';
 import { logHarvest } from './diary.js';
+import { hasNearbyWater } from './irrigation.js';
 
 export const FUEL_CAN = 20;
 export const FUEL_CAN_COST = 17; // 1/3 of the old 50g
@@ -167,14 +168,17 @@ function workTile(state, action, x, y) {
     if (!def || tile.crop.stage < def.stages) return false;
     add(state.player.inventory, 'crops', qualityKey(def.id, 0), 1);
     if (def.hayYield) ranchState(state).hay += def.hayYield;
+    // Irrigated ground (with a water source in range) stays watered right
+    // through harvest -- only ground with no working irrigation dries out.
+    const stillWatered = Boolean(tile.irrigation && hasNearbyWater(state.world, x, y));
     if (def.regrowDays) {
       tile.crop.stage = Math.max(0, def.stages - def.regrowDays);
       tile.crop.dryDays = 0;
-      tile.watered = false;
+      tile.watered = stillWatered;
     } else {
       tile.crop = null;
       tile.tilled = false;
-      tile.watered = false;
+      tile.watered = stillWatered;
     }
     state.world.touch(x, y);
     gainXp(state, 'farming', 3);

@@ -6,6 +6,7 @@ import { addStat } from './stats.js';
 import { seasonIndex } from '../state/gameState.js';
 import { ranchState } from './ranch.js';
 import { logHarvest } from './diary.js';
+import { hasNearbyWater } from './irrigation.js';
 
 // Tiles affected by a tool area, centered on the player.
 function areaTiles(area, cx, cy) {
@@ -196,16 +197,20 @@ export function harvest(state) {
     if (Math.random() < farmingYieldBonusChance(state)) qty += 1; // Farming perk
     const quality = rollQuality(state, tile);
     add(p.inventory, 'crops', qualityKey(def.id, quality), qty);
+    // Irrigated ground (with a water source in range) stays watered right
+    // through harvest -- only ground with no working irrigation actually
+    // dries out from this.
+    const stillWatered = Boolean(tile.irrigation && hasNearbyWater(state.world, x, y));
     if (def.regrowDays) {
       // A bush/vine crop: stays planted, just drops back to an earlier
       // stage and needs watering again to ripen a second (third, ...) time.
       tile.crop.stage = Math.max(0, def.stages - def.regrowDays);
       tile.crop.dryDays = 0;
-      tile.watered = false;
+      tile.watered = stillWatered;
     } else {
       tile.crop = null;
       tile.tilled = false;
-      tile.watered = false;
+      tile.watered = stillWatered;
       tile.fertilizer = null;
     }
     state.world.touch(x, y);
