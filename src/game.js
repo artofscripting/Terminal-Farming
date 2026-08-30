@@ -156,7 +156,7 @@ export class Game {
   queueTractorAnimation(workedTiles) {
     if (!workedTiles || workedTiles.length === 0) return;
     for (const t of workedTiles) {
-      this.revealQueue.push({ x: t.x, y: t.y, appearance: tileAppearance(t.before) });
+      this.revealQueue.push({ x: t.x, y: t.y, appearance: { ...tileAppearance(t.before), watered: t.before.watered } });
     }
     if (!this.revealTimer) this.scheduleReveal();
   }

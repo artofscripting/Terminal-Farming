@@ -44,8 +44,9 @@ export function renderScene(renderer, camera, state, overrides) {
       const tile = state.world.getTile(wx, wy);
       const override = overrides && overrides.get(`${wx},${wy}`);
       const { glyph, fg, ripe } = override || tileAppearance(tile);
+      const watered = override ? override.watered : tile.watered;
       const owned = state.ownedPlots.has(plotIdAt(wx, wy));
-      const bg = ripe ? RIPE_BG : tile.watered ? WATERED_BG : owned ? OWNED_BG : WORLD_BG;
+      const bg = ripe ? RIPE_BG : watered ? WATERED_BG : owned ? OWNED_BG : WORLD_BG;
       renderer.set(sx, mapTop + sy, glyph, fg, bg);
     }
   }
@@ -53,9 +54,11 @@ export function renderScene(renderer, camera, state, overrides) {
   // Player overlay at viewport center.
   const { sx, sy } = camera.worldToScreen(state.player.x, state.player.y);
   const pTile = state.world.getTile(state.player.x, state.player.y);
-  const pRipe = tileAppearance(pTile).ripe;
+  const pOverride = overrides && overrides.get(`${state.player.x},${state.player.y}`);
+  const pRipe = (pOverride || tileAppearance(pTile)).ripe;
+  const pWatered = pOverride ? pOverride.watered : pTile.watered;
   const glyph = state.tractor?.mounted ? 'T' : '@';
-  renderer.set(sx, mapTop + sy, glyph, [255, 255, 120], pRipe ? RIPE_BG : pTile.watered ? WATERED_BG : WORLD_BG);
+  renderer.set(sx, mapTop + sy, glyph, [255, 255, 120], pRipe ? RIPE_BG : pWatered ? WATERED_BG : WORLD_BG);
 
   drawTilePanel(renderer, state, w, mapTop, mapHeight);
 
