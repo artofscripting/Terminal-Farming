@@ -399,6 +399,16 @@ export class Game {
 
   tickAutoPlay() {
     if (this.mode !== 'game') { this.stopAutoPlay(); return; }
+    // A previous tractor pass's tile-reveal animation is still catching up
+    // -- hold off on the next action entirely (don't even walk) until every
+    // tile from it has been revealed, so auto-play never visually races
+    // ahead of what the player is still watching play out. Just re-checks
+    // at the same cadence the reveal itself advances at; doesn't touch game
+    // state or the status line, so nothing flickers while it waits.
+    if (this.revealQueue.length > 0) {
+      this.autoPlayTimer = setTimeout(() => this.tickAutoPlay(), TILE_REVEAL_MS);
+      return;
+    }
     const { msg, slept, questEvent, animateTiles } = autoPlayStep(this.state);
     this.setStatus(msg, questEvent);
     this.queueTractorAnimation(animateTiles);
