@@ -124,10 +124,10 @@ function area3x3(cx, cy) {
 }
 
 // Apply one implement to a single tile; returns true if work was done.
-// XP per tile worked, matching farming.js's hand-tool rates exactly (till
-// 2, plant 2, water 1, harvest 3) -- the tractor is a faster, energy-free
-// way to do the same farm work, not a way to skip the skill progression
-// that work would otherwise earn.
+// XP per tile worked is half farming.js's hand-tool rate for the same
+// action (till 2, plant 2, water 1, harvest 3 by hand -> 1, 1, 0.5, 1.5 by
+// tractor) -- the tractor is a faster, energy-free way to do the same farm
+// work, so it earns skill progress slower rather than for free.
 function workTile(state, action, x, y) {
   if (!ownsTile(state, x, y)) return false;
   const tile = state.world.getTile(x, y);
@@ -138,7 +138,7 @@ function workTile(state, action, x, y) {
     if (!['grass', 'field', 'sand'].includes(tile.base)) return false;
     tile.tilled = true;
     state.world.touch(x, y);
-    gainXp(state, 'farming', 2);
+    gainXp(state, 'farming', 1);
     return true;
   }
   if (action === 'seed') {
@@ -149,7 +149,7 @@ function workTile(state, action, x, y) {
     remove(state.player.inventory, 'seeds', seedId, 1);
     tile.crop = { id: seedId, stage: 0, wateredToday: false, quality: 0 };
     state.world.touch(x, y);
-    gainXp(state, 'farming', 2);
+    gainXp(state, 'farming', 1);
     return true;
   }
   if (action === 'water') {
@@ -160,7 +160,7 @@ function workTile(state, action, x, y) {
       tile.crop.dryDays = 0; // watering clears the wilting status right away
     }
     state.world.touch(x, y);
-    gainXp(state, 'farming', 1);
+    gainXp(state, 'farming', 0.5);
     return true;
   }
   if (action === 'harvest') {
@@ -181,7 +181,7 @@ function workTile(state, action, x, y) {
       tile.watered = stillWatered;
     }
     state.world.touch(x, y);
-    gainXp(state, 'farming', 3);
+    gainXp(state, 'farming', 1.5);
     logHarvest(state, def.id, 1);
     return true;
   }

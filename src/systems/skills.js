@@ -19,13 +19,14 @@ export function ensureSkills(player) {
 
 const XP_RATE = 1 / 3; // all skill XP gains 3x slower
 const XP_GAIN_MULT = 1 / 20; // balance pass: further 20x reduction on top of XP_RATE
+const XP_GAIN_MULT_2 = 1 / 3; // balance pass: a further 3x reduction on top of the above two
 const FARMING_MAXENERGY_PCT_PER_LEVEL = 0.02; // balance pass: +2% of current max energy per level, not a flat amount
 
 export function gainXp(state, skill, amount) {
   ensureSkills(state.player);
   const s = state.player.skills[skill];
   if (!s) return;
-  s.xp += amount * XP_RATE * XP_GAIN_MULT;
+  s.xp += amount * XP_RATE * XP_GAIN_MULT * XP_GAIN_MULT_2;
   while (s.xp >= XP_PER_LEVEL) {
     s.xp -= XP_PER_LEVEL;
     s.level += 1;
