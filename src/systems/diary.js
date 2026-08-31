@@ -36,7 +36,9 @@ export function logPurchase(state, name, qty, gold) {
 // Roll the day that's ending into a permanent diary entry, then reset the
 // accumulator for the day about to start. `meta` carries what calendar.js's
 // sleep() already computed for that day (its date, weather, and deaths) so
-// this doesn't duplicate that work.
+// this doesn't duplicate that work. Returns the entry (goldStart/goldEnd in
+// particular) so sleep() can feed personal-best tracking without this
+// module needing to import stats.js/networth.js itself.
 export function closeDay(state, meta) {
   const log = dayLogState(state);
   const entry = {
@@ -51,6 +53,7 @@ export function closeDay(state, meta) {
   state.diary.push(entry);
   if (state.diary.length > MAX_DIARY_DAYS) state.diary.shift();
   state.dayLog = { harvested: {}, sold: {}, bought: {}, goldStart: state.player.gold };
+  return entry;
 }
 
 // Diary entries, most recent first (index 0 = yesterday, the usual way to

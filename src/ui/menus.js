@@ -16,7 +16,7 @@ import { heartsOf, availableFor, activeFor, canTurnIn, isBestFriend } from '../s
 import { greeting, likedHeld, npcsInCurrentTown, currentTown } from '../systems/town.js';
 import { currentFestival, daysToFestival } from '../systems/festivals.js';
 import { forecastWeather } from '../systems/calendar.js';
-import { statsOf } from '../systems/stats.js';
+import { statsOf, GOLD_MILESTONES } from '../systems/stats.js';
 import { ACHIEVEMENTS } from '../content/achievements.js';
 import {
   seedDiscount, farmingYieldBonusChance, husbandryQualityBonus,
@@ -407,6 +407,16 @@ export function renderStats(renderer, state) {
   line('Crops harvested', s.cropsHarvested);
   line('Forage gathered', s.forageGathered);
   line('Quests completed', s.questsCompleted);
+  line('Best day profit', `${s.bestDayProfit || 0}g`);
+  line('Best farm value', `${s.bestFarmValue || 0}g`);
+
+  y++;
+  renderer.text(3, y++, 'Gold milestones (day first reached):', TITLE, PANEL_BG);
+  const milestoneStr = GOLD_MILESTONES.map((m) => {
+    const day = s.goldMilestoneDays?.[m];
+    return `${m}g:${day != null ? `d${day}` : '-'}`;
+  }).join('  ');
+  renderer.text(3, y++, milestoneStr, TEXT, PANEL_BG);
 
   y++;
   renderer.text(3, y++, 'Achievements:', TITLE, PANEL_BG);

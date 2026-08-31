@@ -69,7 +69,7 @@ All of the above (except movement and `P`) act only **on the tile you're standin
 | `f` | Festival / calendar |
 | `i` | Inventory |
 | `K` | Skills |
-| `S` | Lifetime stats & achievements (gold earned, crops harvested, days played, ...) |
+| `S` | Lifetime stats & achievements (gold earned, crops harvested, days played, personal bests, ...) |
 | `D` | Harvest Diary — one day per screen: weather, crop deaths, harvested/sold/bought, and the day's net gold. `n`/`p` scroll further back/forward in time |
 | `M` | Overview map — your position, owned plots, and nearby towns on one compressed screen |
 | `Y` | Workshops — process a built workshop's recipe (as many as you have materials for) |

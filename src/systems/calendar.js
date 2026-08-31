@@ -8,8 +8,9 @@ import { autoRoute } from './machines.js';
 import { laborOvernight } from './labor.js';
 import { resetDailyGifts } from './town.js';
 import { hasNearbyWater } from './irrigation.js';
-import { addStat } from './stats.js';
+import { addStat, recordDayEnd } from './stats.js';
 import { closeDay } from './diary.js';
+import { farmValue } from './networth.js';
 
 const WEATHERS = ['sunny', 'sunny', 'rain', 'drought', 'frost'];
 const SHOULDER_DAYS = 5; // frost's reach into the start of spring / end of fall
@@ -145,7 +146,8 @@ export function sleep(state) {
   const routed = autoRoute(state);
   const labor = laborOvernight(state);
   const produced = ranchOvernight(state);
-  closeDay(state, { ...endingDay, weather: endingWeather, deaths });
+  const dayEntry = closeDay(state, { ...endingDay, weather: endingWeather, deaths });
+  recordDayEnd(state, dayEntry.goldStart, dayEntry.goldEnd, farmValue(state));
   let msg = `Day ${c.day}, ${c.season} (Year ${c.year}). Weather: ${state.weather}.`;
   if (routed > 0) msg += ` Tractor worked ${routed} tile${routed === 1 ? '' : 's'}.`;
   if (labor.worked > 0) msg += ` Workers did ${labor.worked} task${labor.worked === 1 ? '' : 's'}.`;

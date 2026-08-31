@@ -1,18 +1,13 @@
 import { tileAppearance } from '../world/appearance.js';
 import { plotIdAt, plotTiles } from '../world/plots.js';
 import { priceOfPlot, plotOwnable } from '../systems/plotmarket.js';
-import { Crops, Fertilizers, Tractors } from '../content/registry.js';
+import { Crops, Fertilizers } from '../content/registry.js';
 import { nextStoryQuest, canTurnIn, isAvailable, activeCount } from '../systems/quests.js';
 import { npcDef } from '../content/npcs.js';
-import { hasNearbyWater, IRRIGATION_COST, WELL_COST } from '../systems/irrigation.js';
+import { hasNearbyWater, IRRIGATION_COST } from '../systems/irrigation.js';
 import { count } from '../systems/inventory.js';
 import { forecastWeather } from '../systems/calendar.js';
-import { sellableItems } from '../systems/economy.js';
-import { KITCHEN_COST } from '../systems/kitchen.js';
-import { SEED_PLANT_COST } from '../systems/seedplant.js';
-import { BUNKHOUSE_UPGRADE_COST } from '../systems/labor.js';
-import { RANCH_BUILDINGS, buildingLevelDef, animalDef } from '../content/animals.js';
-import { WORKSHOPS } from '../content/workshops.js';
+import { farmValue } from '../systems/networth.js';
 import { xpToNextLevel } from '../systems/skills.js';
 import { SEASONS } from '../state/gameState.js';
 
@@ -160,67 +155,6 @@ function tileInfoLines(state, tile, x, y) {
 }
 
 
-// What's been sunk into buildings, the tractor, and livestock -- none of
-// these have a sell-back price, so this totals what was actually paid for
-// them (every tier/level along the way, not just the current one) rather
-// than guessing at a resale value.
-function investedValue(state) {
-  let value = 0;
-
-  if (state.hasKitchen) value += KITCHEN_COST;
-  if (state.seedPlant?.built) value += SEED_PLANT_COST;
-
-  const tr = state.tractor;
-  if (tr?.owned) {
-    const models = Tractors.all();
-    const idx = models.findIndex((m) => m.id === tr.model);
-    for (let i = 0; i <= idx; i++) value += models[i].cost;
-  }
-
-  for (const plotId of state.ownedPlots) {
-    for (const { x, y } of plotTiles(plotId)) {
-      if (state.world.getTile(x, y).building === 'well') value += WELL_COST;
-    }
-  }
-
-  const ranch = state.ranch;
-  if (ranch?.buildings) {
-    for (const b of RANCH_BUILDINGS) {
-      const struct = ranch.buildings[b.id];
-      if (!struct?.built) continue;
-      for (let lvl = 1; lvl <= struct.level; lvl++) value += buildingLevelDef(b, lvl)?.cost || 0;
-      for (const animal of struct.animals) value += animalDef(animal.type)?.cost || 0;
-    }
-  }
-
-  if (state.workshops) {
-    for (const w of WORKSHOPS) if (state.workshops[w.id]?.built) value += w.cost;
-  }
-
-  const bunkLevel = state.labor?.bunkLevel || 0;
-  for (let lvl = 1; lvl <= bunkLevel; lvl++) value += BUNKHOUSE_UPGRADE_COST[lvl] || 0;
-
-  return value;
-}
-
-// Net worth shown in the HUD: cash on hand, plus what owned land would sell
-// for, installed irrigation (at its install cost -- it has no sell-back
-// price of its own, but it's a real sunk investment in the land), buildings/
-// tractor/livestock (see investedValue), and what's currently sitting in
-// the sell-crops/forage/goods/dishes inventory would fetch at today's
-// prices. Tools aren't included -- there's no sell-back price for them and
-// they're not "farm" assets in the way land/buildings/animals are.
-function farmValue(state) {
-  let value = state.player.gold + investedValue(state);
-  for (const plotId of state.ownedPlots) {
-    value += priceOfPlot(state, plotId);
-    for (const { x, y } of plotTiles(plotId)) {
-      if (state.world.getTile(x, y).irrigation) value += IRRIGATION_COST;
-    }
-  }
-  for (const item of sellableItems(state)) value += item.price * item.qty;
-  return value;
-}
 
 // `compactHud` (game.js's V toggle) drops the recently-added extras --
 // starting-options corner, XP progress numbers, and farm value -- for
