@@ -184,7 +184,13 @@ export class Game {
 
   onKey(name, key, str) {
     if (name === 'tap') {
-      if (this.mode === 'game') this.handleTap(key.col, key.row);
+      if (this.mode === 'game') { this.handleTap(key.col, key.row); return; }
+      // Any other mode: tapping a menu row (drawn via menus.js's row()
+      // helper) presses whatever key that row shows, so menu screens are
+      // tappable on the web build without needing the OS keyboard --
+      // reusing the normal dispatch below rather than duplicating it.
+      const rowKey = menus.rowKeyAt(key.row);
+      if (rowKey) this.onKey(rowKey, { name: rowKey }, rowKey);
       return;
     }
     if (this.mode === 'console') return this.keyConsole(name, key, str);

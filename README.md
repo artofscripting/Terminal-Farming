@@ -38,6 +38,7 @@ Energy drops with actions. Sleep restores it. Eat cooked food in the kitchen whe
 | Click / tap the map (web build) | Walk there (real pathing); tap the tile you're standing on to harvest it if it's ripe |
 | On-screen D-pad + action buttons (web build) | Same as the matching keys (movement, till/plant/water/harvest, inventory, shop, sleep, Esc) -- shown automatically on a touch device, toggle with the button top-right |
 | Swipe the map (web build) | Move one tile in the swipe direction -- same as one press of the matching arrow key. A short tap still walks/harvests as above |
+| Tap a menu row (web build) | Presses whatever key that row shows (works on every menu -- shop, save/load, ranch, almanac, etc.) -- no OS keyboard needed to navigate menus |
 | `t` | Till soil |
 | `p` | Plant selected seed |
 | `e` | Water |

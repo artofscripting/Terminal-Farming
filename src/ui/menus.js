@@ -38,7 +38,20 @@ const TEXT = [220, 220, 210];
 const DIM = [140, 140, 150];
 const KEYC = [130, 200, 250];
 
+// Every menu screen's key-labeled rows (row(), below) from its most recent
+// render, as {y, key} -- lets a web tap on a menu (game.js's onKey, for any
+// mode besides 'game') synthesize pressing whatever key that row shows,
+// without each of the ~25 menu screens needing its own tap-handling code.
+// panel() resets it (called at the start of every screen's render), so it
+// always reflects only whatever's actually on screen right now.
+let currentRowKeys = [];
+
+export function rowKeyAt(y) {
+  return currentRowKeys.find((r) => r.y === y)?.key || null;
+}
+
 function panel(renderer, title) {
+  currentRowKeys = [];
   renderer.clear();
   const w = renderer.width;
   for (let y = 0; y < renderer.height; y++) renderer.text(0, y, ' '.repeat(w), TEXT, PANEL_BG);
@@ -47,6 +60,7 @@ function panel(renderer, title) {
 }
 
 function row(renderer, y, keyLabel, text, color = TEXT) {
+  currentRowKeys.push({ y, key: keyLabel });
   renderer.text(3, y, keyLabel, KEYC, PANEL_BG);
   renderer.text(3 + keyLabel.length + 1, y, text, color, PANEL_BG);
 }
