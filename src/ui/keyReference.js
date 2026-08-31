@@ -77,6 +77,7 @@ export const KEY_MEANINGS = {
   '9': [['Shop', 'Buy kitchen']],
   '0': [['Shop', 'Open the Workshops submenu (buy sawmill, carpenter, cotton gin, spinner, weaver, cloth maker)']],
   D: [['Game', 'Open the Harvest Diary'], ['Harvest Diary', 'Close the Harvest Diary'], ['Shop', "Buy today's traveling-merchant deal (if one is available)"]],
+  E: [['Game', 'Open the Almanac (crop/goods/dish reference)'], ['Almanac', 'Close the Almanac']],
 };
 
 // A key's label as shown in the lookup panel title.

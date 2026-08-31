@@ -426,6 +426,12 @@ Every day that ends (`z`, or auto-play sleeping on its own) is recorded permanen
 
 ---
 
+## Almanac (`E`)
+
+A browsable reference for every crop, ranch/workshop good, and kitchen dish — season, days to grow, seed/sell price for crops; sell price and source for goods; sell price, energy, and ingredients for dishes. `1`/`2`/`3` switch category, `n`/`p` page through a long list. Crops still locked behind a quest or lucky foraging (see seed unlocks) show as `???` instead of their real stats, so nothing here spoils what you haven't found yet.
+
+---
+
 ## Tips
 
 1. **Water every planted tile before sleep** — or wait for rain.

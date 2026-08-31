@@ -4,7 +4,8 @@ import { sellableItems, nextToolTier, itemName, seedPrice, marketFactor, dailyDe
 import { isSeedUnlocked } from '../systems/seedUnlocks.js';
 import { expandPrice, nextExpansionPlot } from '../systems/plotmarket.js';
 import { canCook, listRecipes, dishesInInventory } from '../systems/kitchen.js';
-import { recipeDef } from '../content/recipes.js';
+import { recipeDef, RECIPES } from '../content/recipes.js';
+import { GOODS } from '../content/goods.js';
 import { ranchSummary, nextRanchLevel } from '../systems/ranch.js';
 import { RANCH_BUILDINGS, ANIMALS, HAY_COST, ranchBuildingDef, buildingLevelDef } from '../content/animals.js';
 import { workshopSummary, maxRuns } from '../systems/workshops.js';
@@ -416,6 +417,68 @@ export function renderStats(renderer, state) {
   }
 
   renderer.text(2, renderer.height - 1, 'q back', DIM, PANEL_BG);
+}
+
+// Almanac: browsable list of every crop/good/dish, one category per screen,
+// paginated with n/p (same convention as Help/Diary). Crops distinguish
+// locked (not-yet-unlocked, see systems/seedUnlocks.js) from available;
+// goods/dishes have no such gate in this game -- anything you've built the
+// right structure for can be made, so they're just listed straight, with a
+// "from:" hint pointing at what makes them.
+const ALMANAC_TABS = ['Crops', 'Goods', 'Dishes'];
+
+function almanacCropRows(state) {
+  return Crops.all().map((def) => {
+    if (!isSeedUnlocked(state, def.id)) {
+      return { text: '???'.padEnd(14) + 'locked -- finish a quest, or get lucky foraging', color: DIM };
+    }
+    const seasons = def.seasons.join(',');
+    const lvl = def.minFarmingLevel ? `  Lv${def.minFarmingLevel}` : '';
+    return {
+      text: `${def.name.padEnd(14)} ${seasons.padEnd(18)} Grow:${String(def.daysWatered).padStart(3)}d  ${def.seedCost}g->${def.sellBase}g${lvl}`,
+      color: TEXT,
+    };
+  });
+}
+
+// Which animal or workshop recipe produces each good, for the "from:" hint.
+function goodSourceMap() {
+  const map = {};
+  for (const a of ANIMALS) map[a.product] = `${a.name} (${ranchBuildingDef(a.building)?.name || a.building})`;
+  for (const w of WORKSHOPS) for (const r of w.recipes) map[r.output.id] = w.name;
+  return map;
+}
+
+function almanacGoodRows() {
+  const src = goodSourceMap();
+  return GOODS.map((g) => ({
+    text: `${g.name.padEnd(16)} Sell:${String(g.sellBase).padStart(4)}g   from: ${src[g.id] || '?'}`,
+    color: TEXT,
+  }));
+}
+
+function almanacDishRows() {
+  return RECIPES.map((r) => {
+    const needs = r.ingredients.map((i) => `${i.qty}x ${itemName(i.cat, i.id)}`).join(', ');
+    return { text: `${r.name.padEnd(18)} Sell:${String(r.sell).padStart(4)}g  Eat:+${r.eat}E  Needs: ${needs}`, color: TEXT };
+  });
+}
+
+// `ui.almanacTab` is 0|1|2 (Crops/Goods/Dishes), `ui.almanacPage` the page
+// within that tab.
+export function renderAlmanac(renderer, state, ui) {
+  const tab = ui.almanacTab || 0;
+  const rowsAll = tab === 0 ? almanacCropRows(state) : tab === 1 ? almanacGoodRows() : almanacDishRows();
+  const pageSize = Math.max(5, renderer.height - 7);
+  const pageCount = Math.max(1, Math.ceil(rowsAll.length / pageSize));
+  const page = Math.max(0, Math.min(pageCount - 1, ui.almanacPage || 0));
+  const rows = rowsAll.slice(page * pageSize, page * pageSize + pageSize);
+
+  const tabLabel = ALMANAC_TABS.map((t, i) => (i === tab ? `[${i + 1} ${t}]` : ` ${i + 1} ${t} `)).join(' ');
+  panel(renderer, `Almanac  ${tabLabel}  (page ${page + 1}/${pageCount})`);
+  let y = 3;
+  for (const row of rows) renderer.text(3, y++, row.text, row.color, PANEL_BG);
+  renderer.text(2, renderer.height - 2, '1-3 switch category, n/p page, q/Esc back.', DIM, PANEL_BG);
 }
 
 // Harvest Diary: one day per screen, most recent first. `dayIndex` 0 is
