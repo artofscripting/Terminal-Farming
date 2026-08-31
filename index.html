@@ -91,17 +91,19 @@
     #touch-controls button:active {
       background: rgba(90, 140, 90, 0.6);
     }
-    /* Page-tab buttons (ui/touchActions.js's paginate(), for a mode with
-       more than 16 relevant actions at once) -- the active page's tab
-       stays visibly highlighted between taps, not just on :active press. */
-    #touch-controls .actions button.active {
-      background: rgba(70, 150, 70, 0.55);
-      border-color: rgba(140, 230, 140, 0.7);
-    }
     #touch-controls .dpad-up { grid-column: 2; grid-row: 1; }
     #touch-controls .dpad-left { grid-column: 1; grid-row: 2; }
     #touch-controls .dpad-right { grid-column: 3; grid-row: 2; }
     #touch-controls .dpad-down { grid-column: 2; grid-row: 3; }
+    /* Wraps the page-tab strip (.tabs) above the action buttons (.actions)
+       so they stack as one right-aligned column -- see .tabs below for why
+       they're split into two rows instead of one mixed flex-wrap. */
+    #touch-controls .action-group {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 0;
+    }
     /* Contextual action buttons (web/main.js + ui/touchActions.js): count
        and labels vary with what's actually possible right now (up to 16),
        so this wraps by content rather than a fixed grid -- min-width keeps
@@ -124,16 +126,58 @@
       line-height: 1.1;
       white-space: nowrap;
     }
-    #touch-toggle {
+    /* Page-tab buttons (ui/touchActions.js's paginate(), for a mode with
+       more than 16 relevant actions at once): a real tab strip sitting just
+       above the action buttons they switch between, instead of one more
+       button mixed in among them -- flat-bottomed and slightly dimmer when
+       inactive, so the active tab reads as "open" into the panel below it. */
+    #touch-controls .tabs {
+      display: flex;
+      justify-content: flex-end;
+      gap: 3px;
+      max-width: 62vw;
+      pointer-events: auto;
+    }
+    #touch-controls .tabs button {
+      min-width: 34px;
+      height: 26px;
+      padding: 0 8px;
+      font-size: 10px;
+      font-weight: 600;
+      border-radius: 6px 6px 0 0;
+      border-bottom: none;
+      background: rgba(20, 30, 24, 0.4);
+      color: #93a693;
+    }
+    #touch-controls .tabs button.active {
+      background: rgba(70, 150, 70, 0.55);
+      border-color: rgba(140, 230, 140, 0.7);
+      color: #eaffea;
+    }
+    /* Once a tab strip is actually showing, give the action panel below it
+       a matching top edge so the active tab looks attached to it rather
+       than floating -- :has() keeps this scoped to only when tabs exist,
+       so the common (unpaginated) case is untouched. */
+    #touch-controls .action-group:has(.tabs button) .actions {
+      border-top: 1px solid rgba(140, 230, 140, 0.35);
+      padding-top: 6px;
+    }
+
+    /* Top-right corner cluster: font size +/- next to the touch-controls
+       show/hide toggle. Below the HUD header (web/main.js computes
+       --header-h from render.js's currentHudRows, which grows if the
+       header wraps to fit a narrow width) instead of a fixed offset, so it
+       never overlaps header text -- notably the starting-options corner
+       drawn at the top-right of line 1 during normal play. */
+    #header-controls {
       position: fixed;
       right: 8px;
-      /* Below the HUD header (web/main.js computes --header-h from
-         render.js's currentHudRows, which grows if the header wraps to fit
-         a narrow width) instead of a fixed offset, so it never overlaps
-         header text -- notably the starting-options corner drawn at the
-         top-right of line 1 during normal play. */
       top: calc(var(--header-h, 60px) + 8px);
       z-index: 11;
+      display: flex;
+      gap: 6px;
+    }
+    #header-controls button {
       width: 44px;
       height: 44px;
       border-radius: 8px;
@@ -142,6 +186,9 @@
       color: #dce8dc;
       font-size: 16px;
       touch-action: manipulation;
+    }
+    #header-controls button:disabled {
+      opacity: 0.35;
     }
 
     /* Landscape suggestion (web/main.js): shown only when fitToWidth() had
@@ -182,7 +229,11 @@
 <body>
   <div id="terminal"></div>
   <div id="rotate-suggest">Rotate your device for a more comfortable view. <button id="rotate-dismiss" title="Dismiss">&times;</button></div>
-  <button id="touch-toggle" title="Toggle touch controls">&#9639;</button>
+  <div id="header-controls">
+    <button id="font-dec" title="Decrease font size">A&minus;</button>
+    <button id="font-inc" title="Increase font size">A&plus;</button>
+    <button id="touch-toggle" title="Toggle touch controls">&#9639;</button>
+  </div>
   <div id="touch-controls">
     <div class="pad" id="touch-dpad">
       <button class="dpad-up" data-key="up">&#9650;</button>
@@ -190,9 +241,14 @@
       <button class="dpad-right" data-key="right">&#9654;</button>
       <button class="dpad-down" data-key="down">&#9660;</button>
     </div>
-    <!-- Populated dynamically by web/main.js from ui/touchActions.js's
-         contextualActions() -- see that module for what shows up when. -->
-    <div class="actions" id="touch-actions"></div>
+    <!-- Both populated dynamically by web/main.js from ui/touchActions.js's
+         contextualActions() -- page-tab entries (key "__page:N") go in
+         .tabs, everything else in .actions. See that module for what shows
+         up when. -->
+    <div class="action-group">
+      <div class="tabs" id="touch-tabs"></div>
+      <div class="actions" id="touch-actions"></div>
+    </div>
   </div>
   <script type="module" src="/src/web/main.js"></script>
 </body>

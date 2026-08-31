@@ -13,7 +13,12 @@ const container = document.getElementById('terminal');
 const rotateSuggest = document.getElementById('rotate-suggest');
 const rotateDismiss = document.getElementById('rotate-dismiss');
 const touchControls = document.getElementById('touch-controls');
+const headerControls = document.getElementById('header-controls');
 const touchToggle = document.getElementById('touch-toggle');
+const fontDec = document.getElementById('font-dec');
+const fontInc = document.getElementById('font-inc');
+const actionGroup = touchControls.querySelector('.action-group');
+const touchTabs = document.getElementById('touch-tabs');
 const touchActions = document.getElementById('touch-actions');
 const touchDpad = document.getElementById('touch-dpad');
 
@@ -22,14 +27,43 @@ const touchDpad = document.getElementById('touch-dpad');
 // shrink *columns* to fit a fixed font size would clip that layout badly.
 // Shrinking the *font* instead keeps the assumed column count and just
 // makes each character smaller, down to a floor where text stops being
-// legible.
+// legible. font-dec/font-inc (below) let the player nudge the result up or
+// down from there -- auto-fit still runs on every resize, it's just the
+// starting point the nudge is applied on top of.
 const MIN_COLS = 80;
 const MAX_FONT_SIZE = 16;
 const MIN_FONT_SIZE = 8;
+const FONT_STEP = 1;
+const FONT_OFFSET_KEY = 'th-font-offset';
 // Top/bottom padding for the on-screen controls, in terminal rows -- keeps
 // the button cluster off the game's own HUD/status text instead of
 // overlapping it, in whatever units are actually on screen right now.
 const CONTROLS_VPAD_ROWS = 3;
+
+function loadFontOffset() {
+  try {
+    const v = Number(localStorage.getItem(FONT_OFFSET_KEY));
+    return Number.isFinite(v) ? v : 0;
+  } catch {
+    return 0;
+  }
+}
+function saveFontOffset(v) {
+  try {
+    localStorage.setItem(FONT_OFFSET_KEY, String(v));
+  } catch {
+    // Private-browsing/storage-blocked -- the offset just won't survive a reload.
+  }
+}
+function clampFontSize(n) {
+  return Math.max(MIN_FONT_SIZE, Math.min(MAX_FONT_SIZE, n));
+}
+
+// Manual adjustment on top of the auto-fit size (persisted across reloads),
+// applied fresh in fitToWidth() every time it recomputes -- so it survives
+// resize/rotation instead of being tied to one specific pixel size that'd
+// be wrong on a different screen.
+let fontSizeOffset = loadFontOffset();
 
 const term = new Terminal({
   fontFamily: '"Cascadia Mono", "Courier New", monospace',
@@ -69,16 +103,26 @@ let cachedRowPx = MAX_FONT_SIZE * 1.2;
 let cachedRectTop = 0;
 
 function fitToWidth() {
-  let size = MAX_FONT_SIZE;
-  term.options.fontSize = size;
+  // Auto-fit pass: the largest size (<=MAX_FONT_SIZE) that still reaches
+  // MIN_COLS, same as always.
+  let autoSize = MAX_FONT_SIZE;
+  term.options.fontSize = autoSize;
   let dims = fit.proposeDimensions();
-  while (dims && dims.cols < MIN_COLS && size > MIN_FONT_SIZE) {
-    size -= 1;
-    term.options.fontSize = size;
+  while (dims && dims.cols < MIN_COLS && autoSize > MIN_FONT_SIZE) {
+    autoSize -= 1;
+    term.options.fontSize = autoSize;
     dims = fit.proposeDimensions();
   }
+  // Then apply the player's manual +/- on top of that -- may push cols
+  // below MIN_COLS (bigger text) or well above it (smaller text); that's
+  // the tradeoff of overriding the auto-fit result on purpose.
+  const size = clampFontSize(autoSize + fontSizeOffset);
+  term.options.fontSize = size;
+  dims = fit.proposeDimensions();
   fit.fit();
   updateRotateSuggest(Boolean(dims && dims.cols < MIN_COLS));
+  fontDec.disabled = size <= MIN_FONT_SIZE;
+  fontInc.disabled = size >= MAX_FONT_SIZE;
 
   // Actual on-screen row height, from the real rendered box -- not derived
   // from fontSize directly, since xterm's line-height multiplier means
@@ -91,16 +135,30 @@ function fitToWidth() {
   updateHeaderOffset();
 }
 
+function bumpFontSize(delta) {
+  fontSizeOffset += delta;
+  saveFontOffset(fontSizeOffset);
+  fitToWidth();
+}
+fontDec.addEventListener('pointerdown', (e) => {
+  e.preventDefault();
+  bumpFontSize(-FONT_STEP);
+});
+fontInc.addEventListener('pointerdown', (e) => {
+  e.preventDefault();
+  bumpFontSize(FONT_STEP);
+});
+
 // Bottom of the game HUD header (render.js's drawHud), in viewport pixels --
-// #touch-toggle sits just below this instead of at a fixed top offset, so it
-// never covers header text (notably the top-right starting-options corner
-// on line 1). The header's own row count varies with content/terminal width
-// (drawHud wraps long lines rather than clipping them), so this reads the
-// live currentHudRows rather than a fixed constant. Menu screens don't draw
-// that header at all, so the button just floats a bit above their content
-// there instead, which is harmless.
+// #header-controls sits just below this instead of at a fixed top offset,
+// so it never covers header text (notably the top-right starting-options
+// corner on line 1). The header's own row count varies with content/
+// terminal width (drawHud wraps long lines rather than clipping them), so
+// this reads the live currentHudRows rather than a fixed constant. Menu
+// screens don't draw that header at all, so the buttons just float a bit
+// above their content there instead, which is harmless.
 function updateHeaderOffset() {
-  touchToggle.style.setProperty('--header-h', `${Math.round(cachedRectTop + cachedRowPx * currentHudRows)}px`);
+  headerControls.style.setProperty('--header-h', `${Math.round(cachedRectTop + cachedRowPx * currentHudRows)}px`);
 }
 
 fitToWidth();
@@ -157,17 +215,25 @@ for (const btn of touchControls.querySelectorAll('.pad button[data-key]')) {
   });
 }
 
-// Action buttons are regenerated on every render (contextualActions(), see
-// ui/touchActions.js -- what's shown depends on the tile underfoot, what
-// screens are currently reachable, and the active mode), so one delegated
-// listener on the container handles whichever buttons exist right now
-// instead of re-binding on every refresh.
-touchActions.addEventListener('pointerdown', (e) => {
+// Action/tab buttons are regenerated on every render (contextualActions(),
+// see ui/touchActions.js -- what's shown depends on the tile underfoot,
+// what screens are currently reachable, and the active mode), so one
+// delegated listener on their shared parent handles whichever buttons exist
+// right now instead of re-binding on every refresh.
+actionGroup.addEventListener('pointerdown', (e) => {
   const btn = e.target.closest('button[data-key]');
   if (!btn) return;
   e.preventDefault();
   pressKey(btn.dataset.key);
 });
+
+function makeButton({ key, label, active }) {
+  const btn = document.createElement('button');
+  btn.dataset.key = key;
+  btn.textContent = label;
+  if (active) btn.classList.add('active');
+  return btn;
+}
 
 function renderTouchActions() {
   if (game.mode !== lastMode) {
@@ -182,15 +248,12 @@ function renderTouchActions() {
     autoPlaying,
     hasSaves: save.hasSaves(),
   });
-  touchActions.replaceChildren(
-    ...actions.map(({ key, label, active }) => {
-      const btn = document.createElement('button');
-      btn.dataset.key = key;
-      btn.textContent = label;
-      if (active) btn.classList.add('active');
-      return btn;
-    })
-  );
+  // Page-tab entries (key "__page:N") get their own strip above the rest,
+  // styled as actual tabs -- see index.html's .tabs.
+  const tabs = actions.filter((a) => a.key.startsWith('__page:'));
+  const items = actions.filter((a) => !a.key.startsWith('__page:'));
+  touchTabs.replaceChildren(...tabs.map(makeButton));
+  touchActions.replaceChildren(...items.map(makeButton));
   touchDpad.style.display = showDpad(game.mode, autoPlaying) ? '' : 'none';
 }
 
