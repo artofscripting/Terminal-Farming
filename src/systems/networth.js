@@ -62,7 +62,7 @@ export function investedValue(state) {
 // forage/goods/dishes inventory would fetch at today's prices. Tools aren't
 // included -- there's no sell-back price for them and they're not "farm"
 // assets in the way land/buildings/animals are.
-export function farmValue(state) {
+function computeFarmValue(state) {
   let value = state.player.gold + investedValue(state);
   for (const plotId of state.ownedPlots) {
     value += priceOfPlot(state, plotId);
@@ -71,6 +71,26 @@ export function farmValue(state) {
     }
   }
   for (const item of sellableItems(state)) value += item.price * item.qty;
+  return value;
+}
+
+// farmValue() loops every owned plot's 64 tiles (twice over, once inside
+// investedValue for wells) plus priceOfPlot's town-distance search -- cheap
+// once, but it's called on every render(), including every 70ms tick of the
+// tractor tile-reveal animation, which can fire dozens of times in a row
+// while nothing it depends on has actually changed (the underlying mutation
+// already happened before the reveal queue started draining). A short
+// time-based cache collapses that entire burst into one real computation
+// without needing to track every gold/inventory/building mutation site
+// individually -- any real change is still reflected within CACHE_MS.
+const CACHE_MS = 150;
+let cache = { state: null, at: -Infinity, value: 0 };
+
+export function farmValue(state) {
+  const now = Date.now();
+  if (cache.state === state && now - cache.at < CACHE_MS) return cache.value;
+  const value = computeFarmValue(state);
+  cache = { state, at: now, value };
   return value;
 }
 
