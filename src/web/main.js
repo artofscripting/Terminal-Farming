@@ -9,9 +9,19 @@ import { Game } from '../game.js';
 
 const container = document.getElementById('terminal');
 
+// The game's HUD/menu layout assumes at least MIN_COLS columns (drawn at
+// fixed positions, not reflowed) -- on a narrow phone, letting FitAddon
+// shrink *columns* to fit a fixed font size would clip that layout badly.
+// Shrinking the *font* instead keeps the assumed column count and just
+// makes each character smaller, down to a floor where text stops being
+// legible.
+const MIN_COLS = 80;
+const MAX_FONT_SIZE = 16;
+const MIN_FONT_SIZE = 8;
+
 const term = new Terminal({
   fontFamily: '"Cascadia Mono", "Courier New", monospace',
-  fontSize: 16,
+  fontSize: MAX_FONT_SIZE,
   cursorBlink: false,
   convertEol: true,
   allowTransparency: false,
@@ -20,7 +30,20 @@ const term = new Terminal({
 const fit = new FitAddon();
 term.loadAddon(fit);
 term.open(container);
-fit.fit();
+
+function fitToWidth() {
+  let size = MAX_FONT_SIZE;
+  term.options.fontSize = size;
+  while (size > MIN_FONT_SIZE) {
+    const dims = fit.proposeDimensions();
+    if (!dims || dims.cols >= MIN_COLS) break;
+    size -= 1;
+    term.options.fontSize = size;
+  }
+  fit.fit();
+}
+
+fitToWidth();
 
 const out = { write: (s) => term.write(s) };
 const renderer = new Renderer(term.cols, term.rows, out);
@@ -29,14 +52,14 @@ const input = new WebInput(term);
 
 const game = new Game({ renderer, camera, input, save, onQuit: () => {} });
 
-window.addEventListener('resize', () => fit.fit());
-window.addEventListener('orientationchange', () => fit.fit());
+window.addEventListener('resize', () => fitToWidth());
+window.addEventListener('orientationchange', () => fitToWidth());
 // Mobile browsers (notably iOS Safari) resize the *visual* viewport when
 // the address bar / on-screen keyboard shows or hides without necessarily
 // firing a plain `resize` event -- visualViewport is the reliable signal
 // there, and it's a no-op to also listen for it on desktop.
 if (window.visualViewport) {
-  window.visualViewport.addEventListener('resize', () => fit.fit());
+  window.visualViewport.addEventListener('resize', () => fitToWidth());
 }
 term.onResize(({ cols, rows }) => game.resize(cols, rows));
 
