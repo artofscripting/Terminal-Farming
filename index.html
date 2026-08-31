@@ -40,7 +40,11 @@
          that don't support dvh yet. */
       height: 100vh;
       height: 100dvh;
-      padding: 8px;
+      /* Extra bottom padding (vs. the other 3 sides) so FitAddon has a
+         little less vertical space to fill -- without it, xterm's computed
+         row height can round up just enough to push the rendered terminal
+         a pixel or two past 100dvh and trigger a page scrollbar. */
+      padding: 8px 8px 28px;
       box-sizing: border-box;
     }
 
