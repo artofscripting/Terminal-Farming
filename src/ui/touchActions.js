@@ -50,7 +50,7 @@ function tileActions(state) {
     if (!tile.irrigation) out.push({ key: 'I', label: 'Irrig' });
   }
 
-  if (owned) out.push({ key: 'P', label: 'IrrigPlt' });
+  if (owned) out.push({ key: 'P', label: 'Irrig Plot' });
   if (owned && !tile.building && !tile.crop && TILLABLE.includes(tile.base)) out.push({ key: 'W', label: 'Well' });
 
   const adjTree = [[0, -1], [0, 1], [-1, 0], [1, 0]].some(
@@ -77,11 +77,11 @@ function tileActions(state) {
 function gameActions(state) {
   const out = tileActions(state);
   out.push(
-    { key: ' ', label: 'AutoFrm' },
+    { key: ' ', label: 'Auto Farm' },
     { key: 'R', label: 'AutoHrv' },
     { key: 'Z', label: 'AutoPlay' },
-    { key: 'c', label: 'CycSeed' },
-    { key: 'X', label: 'CycFert' },
+    { key: 'c', label: 'Cycle Seed' },
+    { key: 'X', label: 'Cycle Fert' },
     { key: 'i', label: 'Inv' },
     { key: 'o', label: 'Shop' },
     { key: 'z', label: 'Sleep' },
@@ -91,7 +91,7 @@ function gameActions(state) {
   if (isInTown(state)) out.push({ key: "'", label: 'Town' });
   if (state.festivalActive) out.push({ key: 'f', label: 'Festival' });
   const tr = state.tractor;
-  if (tr?.owned) out.push({ key: 'n', label: 'CycImpl' }, { key: 'y', label: 'AutoRte' });
+  if (tr?.owned) out.push({ key: 'n', label: 'Cycle Impl' }, { key: 'y', label: 'AutoRte' });
   out.push(
     { key: ';', label: 'Ranch' },
     { key: 'u', label: 'Labor' },
