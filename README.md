@@ -35,6 +35,7 @@ Energy drops with actions. Sleep restores it. Eat cooked food in the kitchen whe
 | Key | Action |
 |-----|--------|
 | WASD / arrows / hjkl | Move (costs 1 energy, 0.1 on roads; a tenth of that while tractor-mounted — 0.1 / 0.01) |
+| Click / tap the map (web build) | Walk there (real pathing); tap the tile you're standing on to harvest it if it's ripe |
 | `t` | Till soil |
 | `p` | Plant selected seed |
 | `e` | Water |

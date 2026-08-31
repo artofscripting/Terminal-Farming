@@ -22,7 +22,7 @@ import { runCommand } from './systems/console.js';
 import { findPath } from './systems/pathfind.js';
 import { tryStep } from './systems/movement.js';
 import { autoPlayStep } from './systems/autoplay.js';
-import { renderScene } from './ui/render.js';
+import { renderScene, screenToWorldTile } from './ui/render.js';
 import { tileAppearance } from './world/appearance.js';
 import * as menus from './ui/menus.js';
 
@@ -182,6 +182,10 @@ export class Game {
   }
 
   onKey(name, key, str) {
+    if (name === 'tap') {
+      if (this.mode === 'game') this.handleTap(key.col, key.row);
+      return;
+    }
     if (this.mode === 'console') return this.keyConsole(name, key, str);
     const raw = str && str.length === 1 && str.charCodeAt(0) >= 32 ? str : name;
     // Everywhere but the console (where it deletes a typed character),
@@ -342,18 +346,24 @@ export class Game {
     return tryStep(this.state, p.x + dx, p.y + dy);
   }
 
-  // ---- Walk home (H): path to `state.home`, then auto-step it one tile
-  // every 100ms, sleeping in place whenever energy runs out along the way.
+  // ---- Generic walk-to: path to (tx,ty), then auto-step it one tile every
+  // 100ms, sleeping in place whenever energy runs out along the way. Walk
+  // home (H) and tap-to-move (web mouse/touch on the map) both use this.
+  startWalkTo(tx, ty, arrivedMsg, alreadyThereMsg) {
+    const p = this.state.player;
+    if (p.x === tx && p.y === ty) { this.setStatus(alreadyThereMsg); return; }
+    const path = findPath(this.state.world, p.x, p.y, tx, ty);
+    if (!path || path.length === 0) { this.setStatus('No path there.'); return; }
+    this.walkHomePath = path;
+    this.walkArrivedMsg = arrivedMsg;
+    this.setStatus(`Walking (${path.length} tile${path.length === 1 ? '' : 's'})...`);
+    this.walkHomeTimer = setInterval(() => this.stepWalkHome(), 100);
+  }
+
   startWalkHome() {
     const home = this.state.home;
     if (!home) { this.setStatus('No home to return to.'); return; }
-    const p = this.state.player;
-    if (p.x === home.x && p.y === home.y) { this.setStatus('Already home.'); return; }
-    const path = findPath(this.state.world, p.x, p.y, home.x, home.y);
-    if (!path || path.length === 0) { this.setStatus('No path home found.'); return; }
-    this.walkHomePath = path;
-    this.setStatus(`Walking home (${path.length} tile${path.length === 1 ? '' : 's'})...`);
-    this.walkHomeTimer = setInterval(() => this.stepWalkHome(), 100);
+    this.startWalkTo(home.x, home.y, 'Arrived home.', 'Already home.');
   }
 
   stopWalkHome(msg) {
@@ -379,11 +389,31 @@ export class Game {
     }
     const [nx, ny] = this.walkHomePath[0];
     if (!this.move(nx - p.x, ny - p.y)) {
-      this.stopWalkHome('Walk home interrupted — path blocked.');
+      this.stopWalkHome('Walk interrupted — path blocked.');
       return;
     }
     this.walkHomePath.shift();
-    if (this.walkHomePath.length === 0) this.stopWalkHome('Arrived home.');
+    if (this.walkHomePath.length === 0) this.stopWalkHome(this.walkArrivedMsg || 'Arrived.');
+    this.render();
+  }
+
+  // ---- Tap-to-move (web mouse/touch on the map): tap elsewhere to walk
+  // there; tap the tile you're standing on to harvest it if it's ripe.
+  handleTap(col, row) {
+    const tile = screenToWorldTile(this.camera, this.renderer, col, row);
+    if (!tile) return;
+    if (this.walkHomePath) this.stopWalkHome('Walk cancelled.');
+    if (this.autoPlayTimer) this.stopAutoPlay('Auto-play stopped.');
+    const p = this.state.player;
+    if (tile.wx === p.x && tile.wy === p.y) {
+      const worldTile = this.state.world.getTile(p.x, p.y);
+      const def = worldTile.crop && Crops.get(worldTile.crop.id);
+      if (def && worldTile.crop.stage >= def.stages) this.setStatus(farming.harvest(this.state));
+      else this.setStatus('Tap elsewhere to walk there.');
+      this.render();
+      return;
+    }
+    this.startWalkTo(tile.wx, tile.wy, 'Arrived.', 'Already there.');
     this.render();
   }
 

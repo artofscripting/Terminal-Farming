@@ -30,6 +30,20 @@ const HUD_ROWS = 2;
 // Bottom rows: one status line + one "Next:" hint line.
 const STATUS_ROWS = 2;
 
+// Given a raw terminal-cell coordinate (0,0 at the top-left of the whole
+// screen, not just the map), returns the world tile it corresponds to, or
+// null if it's on the HUD/status rows rather than the map viewport.
+// Mirrors renderScene's own mapTop/mapHeight math -- used by tap-to-move
+// (web mouse/touch on the map) so a tap always targets exactly what's drawn
+// on screen.
+export function screenToWorldTile(camera, renderer, sx, sy) {
+  const mapTop = HUD_ROWS;
+  const mapHeight = renderer.height - HUD_ROWS - STATUS_ROWS;
+  const my = sy - mapTop;
+  if (my < 0 || my >= mapHeight || sx < 0 || sx >= renderer.width) return null;
+  return camera.screenToWorld(sx, my);
+}
+
 // Render the full scene: HUD, map viewport, and status line. `overrides`
 // (Map<"wx,wy", {glyph,fg,ripe}>), if given, lets game.js's tractor
 // tile-reveal animation show a tile's pre-action appearance a beat longer
