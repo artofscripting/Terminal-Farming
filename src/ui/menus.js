@@ -17,6 +17,7 @@ import { greeting, likedHeld, npcsInCurrentTown, currentTown } from '../systems/
 import { currentFestival, daysToFestival } from '../systems/festivals.js';
 import { forecastWeather } from '../systems/calendar.js';
 import { statsOf, GOLD_MILESTONES } from '../systems/stats.js';
+import { farmValue, farmGrade } from '../systems/networth.js';
 import { ACHIEVEMENTS } from '../content/achievements.js';
 import {
   seedDiscount, farmingYieldBonusChance, husbandryQualityBonus,
@@ -409,6 +410,8 @@ export function renderStats(renderer, state) {
   line('Quests completed', s.questsCompleted);
   line('Best day profit', `${s.bestDayProfit || 0}g`);
   line('Best farm value', `${s.bestFarmValue || 0}g`);
+  const curValue = farmValue(state);
+  line('Farm grade', `${farmGrade(curValue)}  (current value ${curValue}g)`);
 
   y++;
   renderer.text(3, y++, 'Gold milestones (day first reached):', TITLE, PANEL_BG);

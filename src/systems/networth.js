@@ -73,3 +73,19 @@ export function farmValue(state) {
   for (const item of sellableItems(state)) value += item.price * item.qty;
   return value;
 }
+
+// Letter grade for a farm value -- rough wealth tiers, not tied to any one
+// stat besides the value itself, so a fresh farm reads F and a
+// well-developed late-game one reads toward S.
+const GRADE_TIERS = [
+  { min: 250000, grade: 'S' },
+  { min: 75000, grade: 'A' },
+  { min: 20000, grade: 'B' },
+  { min: 5000, grade: 'C' },
+  { min: 1000, grade: 'D' },
+  { min: 0, grade: 'F' },
+];
+
+export function farmGrade(value) {
+  return GRADE_TIERS.find((t) => value >= t.min).grade;
+}
