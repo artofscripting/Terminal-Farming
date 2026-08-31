@@ -128,9 +128,10 @@
       position: fixed;
       right: 8px;
       /* Below the HUD header (web/main.js computes --header-h from
-         render.js's HUD_ROWS) instead of a fixed offset, so it never
-         overlaps header text -- notably the starting-options corner drawn
-         at the top-right of line 1 during normal play. */
+         render.js's currentHudRows, which grows if the header wraps to fit
+         a narrow width) instead of a fixed offset, so it never overlaps
+         header text -- notably the starting-options corner drawn at the
+         top-right of line 1 during normal play. */
       top: calc(var(--header-h, 60px) + 8px);
       z-index: 11;
       width: 44px;

@@ -21,9 +21,20 @@ const WARN = [230, 120, 120];
 
 const HINT_FG = [150, 210, 160];
 
+// Typical HUD height (3 info lines) before any wrapping is needed -- the
+// real height varies with content/terminal width (see wrapSegments) and is
+// tracked live in currentHudRows, updated every time drawHud actually runs.
 const HUD_ROWS = 3;
 // Bottom rows: one status line + one "Next:" hint line.
 const STATUS_ROWS = 2;
+
+// How many rows drawHud actually used on its most recent call. Exported as a
+// live binding (not a snapshot) so screenToWorldTile -- called independently
+// of any render, from web taps -- and web/main.js's touch-toggle button
+// positioning both see the current value without needing state/compactHud
+// threaded through to them. Mirrors menus.js's currentRowKeys pattern for
+// the equivalent problem on menu screens.
+export let currentHudRows = HUD_ROWS;
 
 // Given a raw terminal-cell coordinate (0,0 at the top-left of the whole
 // screen, not just the map), returns the world tile it corresponds to, or
@@ -32,8 +43,8 @@ const STATUS_ROWS = 2;
 // (web mouse/touch on the map) so a tap always targets exactly what's drawn
 // on screen.
 export function screenToWorldTile(camera, renderer, sx, sy) {
-  const mapTop = HUD_ROWS;
-  const mapHeight = renderer.height - HUD_ROWS - STATUS_ROWS;
+  const mapTop = currentHudRows;
+  const mapHeight = renderer.height - mapTop - STATUS_ROWS;
   const my = sy - mapTop;
   if (my < 0 || my >= mapHeight || sx < 0 || sx >= renderer.width) return null;
   return camera.screenToWorld(sx, my);
@@ -48,10 +59,9 @@ export function renderScene(renderer, camera, state, overrides, compactHud) {
   const h = renderer.height;
   renderer.clear();
 
-  drawHud(renderer, state, w, compactHud);
-
-  const mapTop = HUD_ROWS;
-  const mapHeight = h - HUD_ROWS - STATUS_ROWS;
+  const mapTop = drawHud(renderer, state, w, compactHud);
+  currentHudRows = mapTop;
+  const mapHeight = h - mapTop - STATUS_ROWS;
   camera.resize(w, mapHeight);
   camera.follow(state.player.x, state.player.y);
 
@@ -156,39 +166,27 @@ function tileInfoLines(state, tile, x, y) {
 
 
 
-// `compactHud` (game.js's V toggle) drops the starting-options corner and
-// XP progress numbers for narrower terminals where they're the first things
-// to get crowded out. Farm value (line 3) is exempt -- it used to be part of
-// that drop list too, but that made it easy to lose track of net worth
-// entirely on a phone-width HUD, so it now always gets its own line.
-function drawHud(renderer, state, w, compactHud) {
+// Builds the HUD's 3 info groups as arrays of "|"-joined segments, without
+// rendering anything -- kept separate from drawHud so wrapSegments' output
+// (and therefore the row count) can never drift from what's actually drawn.
+// `compactHud` (game.js's V toggle) drops the XP progress numbers for
+// narrower terminals where they're the first things to get crowded out.
+// Farm value (group 3) is exempt -- it used to be part of that drop list
+// too, but that made it easy to lose track of net worth entirely on a
+// phone-width HUD, so it now always gets its own line.
+function hudGroups(state, compactHud) {
   const c = state.calendar;
   const p = state.player;
-  renderer.text(0, 0, ' '.repeat(w), HUD_FG, [24, 26, 30]);
-  renderer.text(0, 1, ' '.repeat(w), HUD_FG, [20, 22, 26]);
-  renderer.text(0, 2, ' '.repeat(w), HUD_FG, [18, 24, 20]);
-
-  const tr = state.tractor;
-  const tractorSeg = tr?.owned
-    ? `  |  Tr ${tr.fuel}/${tr.fuelCap} ${tr.implement}${tr.mounted ? ' (on)' : ''}${tr.auto ? ' auto' : ''}`
-    : '';
   const forecast = forecastWeather(state);
-  const line1 = ` Y${c.year} ${cap(c.season)} d${c.day}  |  ${cap(state.weather)} (tomorrow: ${cap(forecast)})  |  ${p.gold}g  |  E ${fmtEnergy(p.energy)}/${fmtEnergy(p.maxEnergy)}${tractorSeg}`;
-  renderer.text(0, 0, line1, HUD_FG, [24, 26, 30]);
-
-  if (!compactHud) {
-    // Top-right: the 3 starting choices (gold-plots-season#), so a save's
-    // difficulty is visible at a glance, plus a red X if cheat mode was ever
-    // turned on for this save (sticks even after disabling it).
-    const so = state.startOptions;
-    if (so) {
-      const seasonNum = SEASONS.indexOf(so.season) + 1 || 1;
-      const startText = `${so.gold}-${so.plots}-${seasonNum}`;
-      const cheatSuffix = state.cheatEverUsed ? ' X' : '';
-      const x0 = Math.max(0, w - startText.length - cheatSuffix.length - 1);
-      renderer.text(x0, 0, startText, HUD_FG, [24, 26, 30]);
-      if (cheatSuffix) renderer.text(x0 + startText.length, 0, cheatSuffix, WARN, [24, 26, 30]);
-    }
+  const group1 = [
+    `Y${c.year} ${cap(c.season)} d${c.day}`,
+    `${cap(state.weather)} (tomorrow: ${cap(forecast)})`,
+    `${p.gold}g`,
+    `E ${fmtEnergy(p.energy)}/${fmtEnergy(p.maxEnergy)}`,
+  ];
+  const tr = state.tractor;
+  if (tr?.owned) {
+    group1.push(`Tr ${tr.fuel}/${tr.fuelCap} ${tr.implement}${tr.mounted ? ' (on)' : ''}${tr.auto ? ' auto' : ''}`);
   }
 
   const seed = p.selectedSeed ? Crops.get(p.selectedSeed)?.name : 'none';
@@ -198,19 +196,87 @@ function drawHud(renderer, state, w, compactHud) {
   const q = activeCount(state);
   const farm = p.skills.farming;
   const forage = p.skills.foraging;
-  const line2 = compactHud
-    ? ` Farm L${farm.level}  Forage L${forage.level}  |  Seed: ${seed}${seedFav} x${seedCount}  |  Fert: ${fert}  |  Plots: ${state.ownedPlots.size}  |  Q${q}`
-    : ` Farm L${farm.level} (${Math.floor(farm.xp)}/${xpToNextLevel('farming', farm.level)}xp)  Forage L${forage.level} (${Math.floor(forage.xp)}/${xpToNextLevel('foraging', forage.level)}xp)  |  Seed: ${seed}${seedFav} x${seedCount}  |  Fert: ${fert}  |  Plots: ${state.ownedPlots.size}  |  Q${q}`;
-  renderer.text(0, 1, line2, HUD_FG, [20, 22, 26]);
+  const skillsSeg = compactHud
+    ? `Farm L${farm.level}  Forage L${forage.level}`
+    : `Farm L${farm.level} (${Math.floor(farm.xp)}/${xpToNextLevel('farming', farm.level)}xp)  Forage L${forage.level} (${Math.floor(forage.xp)}/${xpToNextLevel('foraging', forage.level)}xp)`;
+  const group2 = [skillsSeg, `Seed: ${seed}${seedFav} x${seedCount}`, `Fert: ${fert}`, `Plots: ${state.ownedPlots.size}`, `Q${q}`];
 
-  const line3 = ` Value: ${farmValue(state)}g`;
-  renderer.text(0, 2, line3, ACCENT, [18, 24, 20]);
+  const group3 = [`Value: ${farmValue(state)}g`];
 
-  // Plot info for the tile under the player (right-aligned on line 3).
-  const info = plotHint(state);
-  if (info) {
-    renderer.text(Math.max(0, w - info.text.length - 1), 2, info.text, info.color, [18, 24, 20]);
+  return [group1, group2, group3];
+}
+
+// Top-right corner content for group 1 (the 3 starting choices, so a save's
+// difficulty is visible at a glance, plus a red X if cheat mode was ever
+// turned on for this save -- sticks even after disabling it). Hidden in
+// compact mode, same as before.
+function cornerInfo(state, compactHud) {
+  if (compactHud) return null;
+  const so = state.startOptions;
+  if (!so) return null;
+  const seasonNum = SEASONS.indexOf(so.season) + 1 || 1;
+  return { startText: `${so.gold}-${so.plots}-${seasonNum}`, cheatSuffix: state.cheatEverUsed ? ' X' : '' };
+}
+
+// Packs `segments` (already-built "|"-joined display groups) into as many
+// rows as needed to stay within `w` columns instead of silently running
+// past the edge of the screen and getting clipped -- narrow/phone-width
+// terminals can't always fit a whole group on one line. Only splits at
+// segment boundaries, never mid-segment.
+function wrapSegments(segments, w) {
+  const rows = [];
+  let cur = '';
+  for (const seg of segments) {
+    const next = cur ? `${cur}  |  ${seg}` : ` ${seg}`;
+    if (cur && next.length > w) {
+      rows.push(cur);
+      cur = ` ${seg}`;
+    } else {
+      cur = next;
+    }
   }
+  rows.push(cur);
+  return rows;
+}
+
+// Draws the HUD and returns how many rows it actually used, so the caller
+// (renderScene) knows where the map viewport starts -- see currentHudRows.
+function drawHud(renderer, state, w, compactHud) {
+  const [group1, group2, group3] = hudGroups(state, compactHud);
+  const corner = cornerInfo(state, compactHud);
+  const hint = plotHint(state);
+  // Reserve room for the right-aligned corner/hint text so a long group
+  // never gets silently overwritten by it -- see wrapSegments.
+  const cornerReserve = corner ? corner.startText.length + corner.cheatSuffix.length + 1 : 0;
+  const hintReserve = hint ? hint.text.length + 1 : 0;
+
+  const groups = [
+    { rows: wrapSegments(group1, Math.max(20, w - cornerReserve)), bg: [24, 26, 30] },
+    { rows: wrapSegments(group2, w), bg: [20, 22, 26] },
+    { rows: wrapSegments(group3, Math.max(20, w - hintReserve)), bg: [18, 24, 20] },
+  ];
+
+  let y = 0;
+  for (const g of groups) {
+    for (const text of g.rows) {
+      renderer.text(0, y, ' '.repeat(w), HUD_FG, g.bg);
+      renderer.text(0, y, text, y >= groups[0].rows.length + groups[1].rows.length ? ACCENT : HUD_FG, g.bg);
+      y++;
+    }
+  }
+
+  if (corner) {
+    const { startText, cheatSuffix } = corner;
+    const x0 = Math.max(0, w - startText.length - cheatSuffix.length - 1);
+    renderer.text(x0, 0, startText, HUD_FG, groups[0].bg);
+    if (cheatSuffix) renderer.text(x0 + startText.length, 0, cheatSuffix, WARN, groups[0].bg);
+  }
+  if (hint) {
+    const y3 = groups[0].rows.length + groups[1].rows.length + groups[2].rows.length - 1;
+    renderer.text(Math.max(0, w - hint.text.length - 1), y3, hint.text, hint.color, groups[2].bg);
+  }
+
+  return y;
 }
 
 function plotHint(state) {

@@ -6,7 +6,7 @@ import { Camera } from '../engine/camera.js';
 import { WebInput } from '../engine/webInput.js';
 import * as save from '../state/webSave.js';
 import { Game } from '../game.js';
-import { HUD_ROWS } from '../ui/render.js';
+import { currentHudRows } from '../ui/render.js';
 import { contextualActions, showDpad } from '../ui/touchActions.js';
 
 const container = document.getElementById('terminal');
@@ -61,6 +61,13 @@ function updateRotateSuggest(cramped) {
   rotateSuggest.classList.toggle('visible', portrait && cramped && !rotateDismissed);
 }
 
+// Row height and the terminal's own viewport offset only change on
+// resize/orientation change; cached here so updateHeaderOffset() (which
+// runs after every render, since the HUD's row count can change frame to
+// frame -- see currentHudRows) doesn't need a fresh DOM measurement each time.
+let cachedRowPx = MAX_FONT_SIZE * 1.2;
+let cachedRectTop = 0;
+
 function fitToWidth() {
   let size = MAX_FONT_SIZE;
   term.options.fontSize = size;
@@ -78,15 +85,22 @@ function fitToWidth() {
   // that wouldn't match. Falls back to a fontSize-based estimate the one
   // time this runs before the terminal has laid out at all.
   const rect = term.element.getBoundingClientRect();
-  const rowPx = rect.height > 0 ? rect.height / term.rows : term.options.fontSize * 1.2;
-  touchControls.style.setProperty('--vpad', `${Math.round(rowPx * CONTROLS_VPAD_ROWS)}px`);
-  // Bottom of the game HUD header (render.js's drawHud, HUD_ROWS lines), in
-  // viewport pixels -- #touch-toggle sits just below this instead of at a
-  // fixed top offset, so it never covers the header text (notably the
-  // top-right starting-options corner on line 1). Menu screens don't draw
-  // that header at all, so the button just floats a bit above their content
-  // there instead, which is harmless.
-  touchToggle.style.setProperty('--header-h', `${Math.round(rect.top + rowPx * HUD_ROWS)}px`);
+  cachedRowPx = rect.height > 0 ? rect.height / term.rows : term.options.fontSize * 1.2;
+  cachedRectTop = rect.top;
+  touchControls.style.setProperty('--vpad', `${Math.round(cachedRowPx * CONTROLS_VPAD_ROWS)}px`);
+  updateHeaderOffset();
+}
+
+// Bottom of the game HUD header (render.js's drawHud), in viewport pixels --
+// #touch-toggle sits just below this instead of at a fixed top offset, so it
+// never covers header text (notably the top-right starting-options corner
+// on line 1). The header's own row count varies with content/terminal width
+// (drawHud wraps long lines rather than clipping them), so this reads the
+// live currentHudRows rather than a fixed constant. Menu screens don't draw
+// that header at all, so the button just floats a bit above their content
+// there instead, which is harmless.
+function updateHeaderOffset() {
+  touchToggle.style.setProperty('--header-h', `${Math.round(cachedRectTop + cachedRowPx * currentHudRows)}px`);
 }
 
 fitToWidth();
@@ -160,6 +174,7 @@ function renderTouchActions() {
     touchPage = 0;
     lastMode = game.mode;
   }
+  updateHeaderOffset();
   const autoPlaying = Boolean(game.autoPlayTimer);
   const actions = contextualActions(game.state, game.mode, {
     ui: game.ui,
