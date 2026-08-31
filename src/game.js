@@ -183,7 +183,10 @@ export class Game {
 
   onKey(name, key, str) {
     if (this.mode === 'console') return this.keyConsole(name, str);
-    const k = str && str.length === 1 && str.charCodeAt(0) >= 32 ? str : name;
+    const raw = str && str.length === 1 && str.charCodeAt(0) >= 32 ? str : name;
+    // Everywhere but the console (where it deletes a typed character),
+    // Backspace is just another way to back out of a screen -- same as Esc.
+    const k = raw === 'backspace' ? 'escape' : raw;
     switch (this.mode) {
       case 'title': return this.keyTitle(k);
       case 'customgame': return this.keyCustomGame(k);
