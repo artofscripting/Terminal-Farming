@@ -98,10 +98,44 @@
       font-size: 16px;
       touch-action: manipulation;
     }
+
+    /* Landscape suggestion (web/main.js): shown only when fitToWidth() had
+       to shrink the font all the way to its legibility floor and still
+       couldn't comfortably fit -- a genuine signal rotating would help,
+       not just "you're in portrait." Dismissible; never blocks play. */
+    #rotate-suggest {
+      display: none;
+      position: fixed;
+      left: 0;
+      right: 0;
+      top: 0;
+      z-index: 12;
+      padding: 8px 40px 8px 12px;
+      box-sizing: border-box;
+      background: rgba(40, 30, 10, 0.85);
+      color: #f0dca0;
+      font: 13px "Cascadia Mono", "Courier New", monospace;
+      border-bottom: 1px solid rgba(240, 220, 160, 0.35);
+    }
+    #rotate-suggest.visible { display: block; }
+    #rotate-dismiss {
+      position: absolute;
+      right: 6px;
+      top: 4px;
+      width: 28px;
+      height: 28px;
+      border-radius: 6px;
+      border: 1px solid rgba(240, 220, 160, 0.35);
+      background: transparent;
+      color: #f0dca0;
+      font-size: 14px;
+      touch-action: manipulation;
+    }
   </style>
 </head>
 <body>
   <div id="terminal"></div>
+  <div id="rotate-suggest">Rotate your device for a more comfortable view. <button id="rotate-dismiss" title="Dismiss">&times;</button></div>
   <button id="touch-toggle" title="Toggle touch controls">&#9639;</button>
   <div id="touch-controls">
     <div class="pad" id="touch-dpad">

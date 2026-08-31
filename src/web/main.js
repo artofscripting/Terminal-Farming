@@ -31,16 +31,37 @@ const fit = new FitAddon();
 term.loadAddon(fit);
 term.open(container);
 
+// Suggests rotating to landscape, but only when portrait genuinely can't
+// fit MIN_COLS even at the font-size floor -- not just "you're in
+// portrait," which would be noise on a tablet with plenty of width.
+// Dismissible per portrait session; clears once back in landscape so it
+// can reappear if they return to a cramped portrait later.
+const rotateSuggest = document.getElementById('rotate-suggest');
+const rotateDismiss = document.getElementById('rotate-dismiss');
+let rotateDismissed = false;
+rotateDismiss.addEventListener('pointerdown', (e) => {
+  e.preventDefault();
+  rotateDismissed = true;
+  rotateSuggest.classList.remove('visible');
+});
+
+function updateRotateSuggest(cramped) {
+  const portrait = window.matchMedia('(orientation: portrait)').matches;
+  if (!portrait) rotateDismissed = false;
+  rotateSuggest.classList.toggle('visible', portrait && cramped && !rotateDismissed);
+}
+
 function fitToWidth() {
   let size = MAX_FONT_SIZE;
   term.options.fontSize = size;
-  while (size > MIN_FONT_SIZE) {
-    const dims = fit.proposeDimensions();
-    if (!dims || dims.cols >= MIN_COLS) break;
+  let dims = fit.proposeDimensions();
+  while (dims && dims.cols < MIN_COLS && size > MIN_FONT_SIZE) {
     size -= 1;
     term.options.fontSize = size;
+    dims = fit.proposeDimensions();
   }
   fit.fit();
+  updateRotateSuggest(Boolean(dims && dims.cols < MIN_COLS));
 }
 
 fitToWidth();
