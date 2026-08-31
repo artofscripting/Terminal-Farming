@@ -102,7 +102,7 @@ function distanceToNearestTown(seed, cx, cy) {
 }
 
 // Price scales with farmland quality (field tiles) and closeness to a town.
-export function priceOfPlot(state, plotId) {
+function computePriceOfPlot(state, plotId) {
   const { world, seed } = state;
   let fieldTiles = 0;
   let farmable = 0;
@@ -121,6 +121,36 @@ export function priceOfPlot(state, plotId) {
   const closeness = Math.max(0.5, 1.6 - dist / 120); // nearer town = pricier
   const density = 0.5 + farmable / 64;
   return Math.round(base * quality * closeness * density * marlaDiscount(state));
+}
+
+// priceOfPlot() is called on every HUD render (the "Buy plot" hint) even
+// while just standing still, but its inputs -- a plot's terrain composition
+// and distanceToNearestTown's town search -- essentially never change for
+// an unowned plot, and rarely for an owned one (chopping a tree is the only
+// way tile.base changes). Cached per plot per calendar day rather than
+// forever, so a same-day terrain change (rare) self-corrects by the next
+// day instead of caching a wrong price permanently. Keyed by the state
+// object itself (WeakMap) so two different saves/games sharing a plotId
+// (very likely -- ids are just grid coordinates) never share a cache.
+const priceCaches = new WeakMap();
+
+function dayKey(state) {
+  const c = state.calendar;
+  return `${c.year}|${c.season}|${c.day}`;
+}
+
+export function priceOfPlot(state, plotId) {
+  let cache = priceCaches.get(state);
+  if (!cache) {
+    cache = new Map();
+    priceCaches.set(state, cache);
+  }
+  const key = dayKey(state);
+  const cached = cache.get(plotId);
+  if (cached && cached.day === key) return cached.value;
+  const value = computePriceOfPlot(state, plotId);
+  cache.set(plotId, { day: key, value });
+  return value;
 }
 
 // New land arrives ready to plant: any tree is felled (no loot -- this is a
