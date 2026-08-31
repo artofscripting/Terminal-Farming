@@ -18,6 +18,7 @@ import { currentFestival, daysToFestival } from '../systems/festivals.js';
 import { forecastWeather } from '../systems/calendar.js';
 import { statsOf, GOLD_MILESTONES } from '../systems/stats.js';
 import { farmValue, farmGrade } from '../systems/networth.js';
+import { bountyStatus } from '../systems/bounty.js';
 import { ACHIEVEMENTS } from '../content/achievements.js';
 import {
   seedDiscount, farmingYieldBonusChance, husbandryQualityBonus,
@@ -493,6 +494,29 @@ export function renderAlmanac(renderer, state, ui) {
   let y = 3;
   for (const row of rows) renderer.text(3, y++, row.text, row.color, PANEL_BG);
   renderer.text(2, renderer.height - 2, '1-3 switch category, n/p page, q/Esc back.', DIM, PANEL_BG);
+}
+
+// Daily Bounty: one small fetch-task, regenerated every calendar day,
+// available from anywhere (no NPC/town needed) -- see systems/bounty.js.
+export function renderBounty(renderer, state) {
+  panel(renderer, "Today's Bounty");
+  const { bounty, status } = bountyStatus(state);
+  let y = 3;
+  renderer.text(3, y++, bounty.name, TITLE, PANEL_BG);
+  renderer.text(3, y++, `Need: ${bounty.need.qty}x ${itemName(bounty.need.cat, bounty.need.id)}`, TEXT, PANEL_BG);
+  renderer.text(3, y++, `Reward: ${bounty.reward.gold}g`, TEXT, PANEL_BG);
+  y++;
+  if (status === 'available') {
+    renderer.text(3, y++, 'Not accepted yet.', DIM, PANEL_BG);
+    row(renderer, y, 'a', 'Accept');
+  } else if (status === 'accepted') {
+    const have = countBase(state.player.inventory, bounty.need.cat, bounty.need.id);
+    renderer.text(3, y++, `Accepted -- have ${have}/${bounty.need.qty}.`, [130, 220, 130], PANEL_BG);
+    row(renderer, y, 't', 'Turn in');
+  } else {
+    renderer.text(3, y++, 'Already turned in today. Come back tomorrow.', DIM, PANEL_BG);
+  }
+  renderer.text(2, renderer.height - 2, 'q/Esc back.', DIM, PANEL_BG);
 }
 
 // Harvest Diary: one day per screen, most recent first. `dayIndex` 0 is

@@ -10,7 +10,7 @@ import { FORAGE } from '../content/forage.js';
 
 export const KEY_MEANINGS = {
   w: [['Game (on foot)', 'Move up']],
-  a: [['Game (on foot)', 'Move left'], ['Ranch', 'Toggle auto-feed'], ['Town', 'Accept the offered quest'], ['Load menu', 'Load the autosave']],
+  a: [['Game (on foot)', 'Move left'], ['Ranch', 'Toggle auto-feed'], ['Town', 'Accept the offered quest'], ['Bounty', 'Accept the bounty'], ['Load menu', 'Load the autosave']],
   s: [['Game (on foot)', 'Move down'], ['Festival', 'Buy 5 favored seeds at the seed booth']],
   d: [['Game (on foot)', 'Move right']],
   up: [['Game', 'Move up (also mounted: drive up)']],
@@ -21,7 +21,7 @@ export const KEY_MEANINGS = {
   j: [['Game (vim keys)', 'Move down'], ['Labor board', 'Hire a Harvester']],
   k: [['Game (vim keys)', 'Move up'], ['Labor board', 'Hire a Generalist']],
   l: [['Game (vim keys)', 'Move right']],
-  t: [['Game (on foot)', 'Till soil'], ['Game (tractor mounted)', 'Plow with the tractor (3x3, uses fuel + 1/10th energy)'], ['Town', 'Turn in a ready quest']],
+  t: [['Game (on foot)', 'Till soil'], ['Game (tractor mounted)', 'Plow with the tractor (3x3, uses fuel + 1/10th energy)'], ['Town', 'Turn in a ready quest'], ['Bounty', 'Turn in the bounty']],
   p: [['Game (on foot)', 'Plant the selected seed'], ['Game (tractor mounted)', 'Seed with the tractor (3x3, uses fuel + 1/10th energy)'], ['Help (browsing pages)', 'Previous help page'], ['Harvest Diary', 'Scroll forward toward today']],
   e: [['Game (on foot)', 'Water'], ['Game (tractor mounted)', 'Water with the tractor (3x3, uses fuel + 1/10th energy)'], ['Kitchen', 'Toggle cook / eat mode']],
   r: [['Game (anywhere)', 'Harvest ripe crop(s)'], ['Game (tractor mounted)', 'Harvest with the tractor (3x3, uses fuel + 1/10th energy)']],
@@ -80,6 +80,7 @@ export const KEY_MEANINGS = {
   D: [['Game', 'Open the Harvest Diary'], ['Harvest Diary', 'Close the Harvest Diary'], ['Shop', "Buy today's traveling-merchant deal (if one is available)"]],
   L: [['Game', 'Favorite/unfavorite the selected seed (so c cycles just your favorites)']],
   E: [['Game', 'Open the Almanac (crop/goods/dish reference)'], ['Almanac', 'Close the Almanac']],
+  N: [['Game', "Open today's Bounty"], ['Bounty', 'Close the Bounty screen']],
 };
 
 // A key's label as shown in the lookup panel title.

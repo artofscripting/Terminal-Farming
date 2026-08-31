@@ -434,6 +434,12 @@ A browsable reference for every crop, ranch/workshop good, and kitchen dish — 
 
 ---
 
+## Daily Bounty (`N`)
+
+A small fetch-task alongside the story quest chain and per-NPC town quests, but time-based instead of place-based — a new one appears every calendar day, generated deterministically from the world seed and the date, so it's the same for everyone on that save/day but different tomorrow. No need to find an NPC or town for it: `a` accepts it, `t` turns it in once you're carrying enough of whatever it wants, for a gold reward. Un-accepted or un-finished bounties simply expire when the day rolls over — nothing carries a penalty. Accepting/turning one in pops the same notification box quests and seed unlocks use.
+
+---
+
 ## Tips
 
 1. **Water every planted tile before sleep** — or wait for rain.

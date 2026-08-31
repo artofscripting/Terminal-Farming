@@ -13,6 +13,7 @@ import { buyRanchBuilding, upgradeRanchBuilding, buyAnimal, buyHay, feedAll, tog
 import { buyTractor, buyFuel, toggleMount, cycleImplement, toggleAuto, cycleZone, tractorField, tractorFieldPlot } from './systems/machines.js';
 import { hireWorker, fireWorker, reassignZone, upgradeBunkhouse } from './systems/labor.js';
 import { acceptQuest, turnInQuest } from './systems/quests.js';
+import { bountyStatus, acceptBounty, turnInBounty } from './systems/bounty.js';
 import { giftItem, isInTown } from './systems/town.js';
 import { enterContest, buyBoothSeeds } from './systems/festivals.js';
 import { installIrrigation, installIrrigationPlot, buyWell } from './systems/irrigation.js';
@@ -207,6 +208,7 @@ export class Game {
       case 'stats': return this.keyStats(k);
       case 'diary': return this.keyDiary(k);
       case 'almanac': return this.keyAlmanac(k);
+      case 'bounty': return this.keyBounty(k);
       case 'map': return this.keyMap(k);
       case 'workshops': return this.keyWorkshops(k);
       case 'seedplant': return this.keySeedPlant(k);
@@ -294,6 +296,7 @@ export class Game {
       case 'K': this.mode = 'skills'; break;
       case 'S': this.mode = 'stats'; break;
       case 'D': this.mode = 'diary'; this.ui.diaryIndex = 0; break;
+      case 'N': this.mode = 'bounty'; break;
       case 'E': this.mode = 'almanac'; this.ui.almanacTab = 0; this.ui.almanacPage = 0; break;
       case 'M': this.mode = 'map'; break;
       case 'L': this.setStatus(this.toggleFavoriteSeed()); break;
@@ -717,6 +720,14 @@ export class Game {
     this.render();
   }
 
+  // ---- Daily Bounty ----
+  keyBounty(k) {
+    if (k === 'q' || k === 'escape' || k === 'N') { this.mode = 'game'; this.render(); return; }
+    if (k === 'a') this.setStatus(acceptBounty(this.state).msg);
+    else if (k === 't') this.setStatus(turnInBounty(this.state).msg);
+    this.render();
+  }
+
   // ---- Overview map ----
   keyMap(k) {
     if (k === 'q' || k === 'escape' || k === 'M') this.mode = 'game';
@@ -905,6 +916,7 @@ export class Game {
     if (this.mode === 'stats') { menus.renderStats(this.renderer, this.state); return; }
     if (this.mode === 'diary') { menus.renderDiary(this.renderer, this.state, this.ui.diaryIndex || 0); return; }
     if (this.mode === 'almanac') { menus.renderAlmanac(this.renderer, this.state, this.ui); return; }
+    if (this.mode === 'bounty') { menus.renderBounty(this.renderer, this.state); return; }
     if (this.mode === 'map') { menus.renderMap(this.renderer, this.state); return; }
     if (this.mode === 'workshops') { this.ui.workshopKeys = menus.renderWorkshops(this.renderer, this.state); return; }
     if (this.mode === 'seedplant') {
