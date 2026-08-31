@@ -1,6 +1,7 @@
 import { TERRAIN, BUILDINGS } from './tile.js';
 import { hexToRgb, mix } from '../engine/ansi.js';
 import { Crops } from '../content/registry.js';
+import { revisionOf } from './tileRevision.js';
 
 export const TILLED = { glyph: '~', color: '#6b4a2a' };
 const WATERED_TINT = [40, 90, 200];
@@ -14,7 +15,7 @@ export const FORAGE_GLYPHS = {
 };
 
 // Derive the on-screen glyph + fg color for a tile from its full state.
-export function tileAppearance(tile) {
+function computeTileAppearance(tile) {
   if (tile.building) {
     const b = BUILDINGS[tile.building];
     return { glyph: b.glyph, fg: hexToRgb(b.color) };
@@ -45,4 +46,24 @@ export function tileAppearance(tile) {
 
   const t = TERRAIN[tile.base] || TERRAIN.grass;
   return { glyph: t.glyph, fg: hexToRgb(t.color) };
+}
+
+// tileAppearance() is called for every visible tile on every render() --
+// several times a second during normal play, and every 70ms tick of the
+// tractor tile-reveal animation -- but a tile's actual state only changes
+// on a world.touch() call (till/plant/water/harvest/build/grow/...), which
+// bumps its revision (world/tileRevision.js). Cached per tile object by
+// that revision, so an unchanged tile is never recomputed between touches.
+// A tile-reveal "before" snapshot (machines.js's snapshotTile) is a fresh
+// plain object each time, so it simply misses the cache once and computes
+// normally -- no staleness risk since it's never reused or mutated.
+const cache = new WeakMap();
+
+export function tileAppearance(tile) {
+  const rev = revisionOf(tile);
+  const cached = cache.get(tile);
+  if (cached && cached.rev === rev) return cached.result;
+  const result = computeTileAppearance(tile);
+  cache.set(tile, { rev, result });
+  return result;
 }

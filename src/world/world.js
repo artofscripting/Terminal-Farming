@@ -1,6 +1,7 @@
 import { CHUNK_SIZE, chunkKey, toChunkCoord, toLocalCoord } from './chunk.js';
 import { generateChunk } from './generator.js';
 import { TERRAIN, BUILDINGS } from './tile.js';
+import { bumpRevision } from './tileRevision.js';
 
 // World facade: transparently maps world tile coords to chunks, generating
 // and caching chunks on demand. Player edits are tracked as per-chunk deltas.
@@ -32,13 +33,17 @@ export class World {
     return this.getChunk(cx, cy).get(lx, ly);
   }
 
-  // Mark a tile modified so it persists across chunk unload/reload and saves.
+  // Mark a tile modified so it persists across chunk unload/reload and
+  // saves, and bump its appearance-cache revision (world/tileRevision.js)
+  // so tileAppearance() knows to recompute it.
   touch(wx, wy) {
     const cx = toChunkCoord(wx);
     const cy = toChunkCoord(wy);
     const lx = toLocalCoord(wx);
     const ly = toLocalCoord(wy);
-    this.getChunk(cx, cy).markDirty(lx, ly);
+    const chunk = this.getChunk(cx, cy);
+    chunk.markDirty(lx, ly);
+    bumpRevision(chunk.get(lx, ly));
   }
 
   isWalkable(wx, wy) {
