@@ -107,9 +107,10 @@ export function renderSeedBuy(renderer, state) {
     const trend = trendArrow(marketFactor(state, 'seeds', c.id));
     const spark = priceSparkline(state, 'seeds', c.id);
     const owned = invCount(state.player.inventory, 'seeds', c.id);
-    row(renderer, 3 + i, KEYS[i], `${c.name.padEnd(12)} ${price}g${trend} ${spark}  (sell ${c.sellBase}g)  [have ${owned}]`);
+    const fav = state.player.favoriteSeeds?.includes(c.id) ? '★' : ' ';
+    row(renderer, 3 + i, KEYS[i], `${fav}${c.name.padEnd(12)} ${price}g${trend} ${spark}  (sell ${c.sellBase}g)  [have ${owned}]`);
   });
-  renderer.text(2, renderer.height - 2, 'Press a key to buy 1 seed.  Trend: 5-day price history.', DIM, PANEL_BG);
+  renderer.text(2, renderer.height - 2, 'Press a key to buy 1 seed. Select one (c), then L to favorite/unfavorite it.', DIM, PANEL_BG);
   return items.map((c) => c.id);
 }
 

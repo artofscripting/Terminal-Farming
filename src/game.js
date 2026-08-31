@@ -292,6 +292,7 @@ export class Game {
       case 'D': this.mode = 'diary'; this.ui.diaryIndex = 0; break;
       case 'E': this.mode = 'almanac'; this.ui.almanacTab = 0; this.ui.almanacPage = 0; break;
       case 'M': this.mode = 'map'; break;
+      case 'L': this.setStatus(this.toggleFavoriteSeed()); break;
       case 'Y': this.mode = 'workshops'; break;
       case 'C': this.openSeedPlant(); break;
       case 'H':
@@ -424,13 +425,34 @@ export class Game {
     this.autoPlayTimer = setTimeout(() => this.tickAutoPlay(), delay);
   }
 
+  // Cycles favorites only when any are pinned (L), otherwise every crop.
   cycleSeed() {
-    const ids = Crops.all().map((c) => c.id);
+    const favs = this.state.player.favoriteSeeds;
+    const ids = favs && favs.length > 0 ? favs : Crops.all().map((c) => c.id);
     const i = ids.indexOf(this.state.player.selectedSeed);
     this.state.player.selectedSeed = ids[(i + 1) % ids.length];
     const def = Crops.get(this.state.player.selectedSeed);
     const lockedTag = isSeedUnlocked(this.state, def.id) ? '' : ' (locked -- quest reward or lucky forage find)';
     this.setStatus(`Seed: ${def.name}${lockedTag}`);
+  }
+
+  // Pin/unpin the currently selected seed (L) so c cycles a short favorites
+  // list instead of every crop -- handy once seed unlocks add up.
+  toggleFavoriteSeed() {
+    const p = this.state.player;
+    const id = p.selectedSeed;
+    if (!id) return 'No seed selected (press c).';
+    if (!p.favoriteSeeds) p.favoriteSeeds = [];
+    const def = Crops.get(id);
+    const idx = p.favoriteSeeds.indexOf(id);
+    if (idx >= 0) {
+      p.favoriteSeeds.splice(idx, 1);
+      return p.favoriteSeeds.length > 0
+        ? `Unfavorited ${def.name} (${p.favoriteSeeds.length} favorite${p.favoriteSeeds.length === 1 ? '' : 's'} left).`
+        : `Unfavorited ${def.name} (no favorites left -- c cycles every seed again).`;
+    }
+    p.favoriteSeeds.push(id);
+    return `Favorited ${def.name} -- c now cycles your ${p.favoriteSeeds.length} favorite${p.favoriteSeeds.length === 1 ? '' : 's'}.`;
   }
 
   cycleFertilizer() {

@@ -236,11 +236,12 @@ function drawHud(renderer, state, w) {
   }
   const seed = p.selectedSeed ? Crops.get(p.selectedSeed)?.name : 'none';
   const seedCount = p.selectedSeed ? count(p.inventory, 'seeds', p.selectedSeed) : 0;
+  const seedFav = p.selectedSeed && p.favoriteSeeds?.includes(p.selectedSeed) ? '★' : '';
   const fert = p.selectedFertilizer ? Fertilizers.get(p.selectedFertilizer)?.name : 'none';
   const q = activeCount(state);
   const farm = p.skills.farming;
   const forage = p.skills.foraging;
-  const line2 = ` Farm L${farm.level} (${Math.floor(farm.xp)}/${xpToNextLevel('farming', farm.level)}xp)  Forage L${forage.level} (${Math.floor(forage.xp)}/${xpToNextLevel('foraging', forage.level)}xp)  |  Seed: ${seed} x${seedCount}  |  Fert: ${fert}  |  Plots: ${state.ownedPlots.size}  |  Q${q}  |  Value ${farmValue(state)}g`;
+  const line2 = ` Farm L${farm.level} (${Math.floor(farm.xp)}/${xpToNextLevel('farming', farm.level)}xp)  Forage L${forage.level} (${Math.floor(forage.xp)}/${xpToNextLevel('foraging', forage.level)}xp)  |  Seed: ${seed}${seedFav} x${seedCount}  |  Fert: ${fert}  |  Plots: ${state.ownedPlots.size}  |  Q${q}  |  Value ${farmValue(state)}g`;
   renderer.text(0, 1, line2, HUD_FG, [20, 22, 26]);
 
   // Plot info for the tile under the player (right-aligned on line 2).

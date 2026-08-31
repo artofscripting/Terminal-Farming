@@ -29,7 +29,7 @@ export const KEY_MEANINGS = {
   g: [['Game', 'Gather forage on your tile'], ['Town', 'Give a gift to the NPC']],
   ' ': [['Game', 'Auto-farm the connected field (till + plant + water)']],
   A: [['Game', 'Auto-farm the connected field (till + plant + water)'], ['Sell screen', 'Sell every stack at once']],
-  c: [['Game', 'Cycle the selected seed'], ['Festival', 'Enter the crop contest']],
+  c: [['Game', 'Cycle the selected seed (cycles your favorites, if any -- see L)'], ['Festival', 'Enter the crop contest']],
   X: [['Game', 'Cycle the selected fertilizer']],
   x: [['Game', 'Apply the selected fertilizer'], ['Labor board', 'Fire the last hired worker'], ['Save menu', 'Export the current save to a file']],
   B: [['Game', 'Buy the plot under you']],
@@ -77,6 +77,7 @@ export const KEY_MEANINGS = {
   '9': [['Shop', 'Buy kitchen']],
   '0': [['Shop', 'Open the Workshops submenu (buy sawmill, carpenter, cotton gin, spinner, weaver, cloth maker)']],
   D: [['Game', 'Open the Harvest Diary'], ['Harvest Diary', 'Close the Harvest Diary'], ['Shop', "Buy today's traveling-merchant deal (if one is available)"]],
+  L: [['Game', 'Favorite/unfavorite the selected seed (so c cycles just your favorites)']],
   E: [['Game', 'Open the Almanac (crop/goods/dish reference)'], ['Almanac', 'Close the Almanac']],
 };
 

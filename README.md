@@ -42,7 +42,8 @@ Energy drops with actions. Sleep restores it. Eat cooked food in the kitchen whe
 | `Space` / `A` | Auto-farm the connected field (till + plant + water) |
 | `R` | Auto-harvest every ripe crop in the connected field |
 | `g` | Gather forage on the tile |
-| `c` | Cycle selected seed |
+| `c` | Cycle selected seed (only your favorites, if any are pinned — see `L`) |
+| `L` | Favorite/unfavorite the selected seed |
 | `X` | Cycle selected fertilizer |
 | `x` | Apply selected fertilizer to tilled soil |
 | `B` | Buy the plot you're standing on |
