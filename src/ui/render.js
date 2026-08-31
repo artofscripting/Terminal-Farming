@@ -34,12 +34,12 @@ const STATUS_ROWS = 2;
 // (Map<"wx,wy", {glyph,fg,ripe}>), if given, lets game.js's tractor
 // tile-reveal animation show a tile's pre-action appearance a beat longer
 // than the world state actually holds it -- see Game.queueTractorAnimation.
-export function renderScene(renderer, camera, state, overrides) {
+export function renderScene(renderer, camera, state, overrides, compactHud) {
   const w = renderer.width;
   const h = renderer.height;
   renderer.clear();
 
-  drawHud(renderer, state, w);
+  drawHud(renderer, state, w, compactHud);
 
   const mapTop = HUD_ROWS;
   const mapHeight = h - HUD_ROWS - STATUS_ROWS;
@@ -208,7 +208,10 @@ function farmValue(state) {
   return value;
 }
 
-function drawHud(renderer, state, w) {
+// `compactHud` (game.js's V toggle) drops the recently-added extras --
+// starting-options corner, XP progress numbers, and farm value -- for
+// narrower terminals where they're the first things to get crowded out.
+function drawHud(renderer, state, w, compactHud) {
   const c = state.calendar;
   const p = state.player;
   renderer.text(0, 0, ' '.repeat(w), HUD_FG, [24, 26, 30]);
@@ -222,18 +225,21 @@ function drawHud(renderer, state, w) {
   const line1 = ` Y${c.year} ${cap(c.season)} d${c.day}  |  ${cap(state.weather)} (tomorrow: ${cap(forecast)})  |  ${p.gold}g  |  E ${fmtEnergy(p.energy)}/${fmtEnergy(p.maxEnergy)}${tractorSeg}`;
   renderer.text(0, 0, line1, HUD_FG, [24, 26, 30]);
 
-  // Top-right: the 3 starting choices (gold-plots-season#), so a save's
-  // difficulty is visible at a glance, plus a red X if cheat mode was ever
-  // turned on for this save (sticks even after disabling it).
-  const so = state.startOptions;
-  if (so) {
-    const seasonNum = SEASONS.indexOf(so.season) + 1 || 1;
-    const startText = `${so.gold}-${so.plots}-${seasonNum}`;
-    const cheatSuffix = state.cheatEverUsed ? ' X' : '';
-    const x0 = Math.max(0, w - startText.length - cheatSuffix.length - 1);
-    renderer.text(x0, 0, startText, HUD_FG, [24, 26, 30]);
-    if (cheatSuffix) renderer.text(x0 + startText.length, 0, cheatSuffix, WARN, [24, 26, 30]);
+  if (!compactHud) {
+    // Top-right: the 3 starting choices (gold-plots-season#), so a save's
+    // difficulty is visible at a glance, plus a red X if cheat mode was ever
+    // turned on for this save (sticks even after disabling it).
+    const so = state.startOptions;
+    if (so) {
+      const seasonNum = SEASONS.indexOf(so.season) + 1 || 1;
+      const startText = `${so.gold}-${so.plots}-${seasonNum}`;
+      const cheatSuffix = state.cheatEverUsed ? ' X' : '';
+      const x0 = Math.max(0, w - startText.length - cheatSuffix.length - 1);
+      renderer.text(x0, 0, startText, HUD_FG, [24, 26, 30]);
+      if (cheatSuffix) renderer.text(x0 + startText.length, 0, cheatSuffix, WARN, [24, 26, 30]);
+    }
   }
+
   const seed = p.selectedSeed ? Crops.get(p.selectedSeed)?.name : 'none';
   const seedCount = p.selectedSeed ? count(p.inventory, 'seeds', p.selectedSeed) : 0;
   const seedFav = p.selectedSeed && p.favoriteSeeds?.includes(p.selectedSeed) ? '★' : '';
@@ -241,7 +247,9 @@ function drawHud(renderer, state, w) {
   const q = activeCount(state);
   const farm = p.skills.farming;
   const forage = p.skills.foraging;
-  const line2 = ` Farm L${farm.level} (${Math.floor(farm.xp)}/${xpToNextLevel('farming', farm.level)}xp)  Forage L${forage.level} (${Math.floor(forage.xp)}/${xpToNextLevel('foraging', forage.level)}xp)  |  Seed: ${seed}${seedFav} x${seedCount}  |  Fert: ${fert}  |  Plots: ${state.ownedPlots.size}  |  Q${q}  |  Value ${farmValue(state)}g`;
+  const line2 = compactHud
+    ? ` Farm L${farm.level}  Forage L${forage.level}  |  Seed: ${seed}${seedFav} x${seedCount}  |  Fert: ${fert}  |  Plots: ${state.ownedPlots.size}  |  Q${q}`
+    : ` Farm L${farm.level} (${Math.floor(farm.xp)}/${xpToNextLevel('farming', farm.level)}xp)  Forage L${forage.level} (${Math.floor(forage.xp)}/${xpToNextLevel('foraging', forage.level)}xp)  |  Seed: ${seed}${seedFav} x${seedCount}  |  Fert: ${fert}  |  Plots: ${state.ownedPlots.size}  |  Q${q}  |  Value ${farmValue(state)}g`;
   renderer.text(0, 1, line2, HUD_FG, [20, 22, 26]);
 
   // Plot info for the tile under the player (right-aligned on line 2).

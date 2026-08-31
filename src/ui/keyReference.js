@@ -56,6 +56,7 @@ export const KEY_MEANINGS = {
   ',': [['Game', 'Cycle the tractor\u2019s overnight auto-route zone']],
   z: [['Game', 'Sleep (end the day, autosave)'], ['Labor board', "Assign the nearest worker's zone to your plot"]],
   v: [['Game', 'Open the save-slot menu']],
+  V: [['Game', 'Toggle compact HUD (hides the starting-options corner, XP progress, and farm value)']],
   f5: [['Game', 'Open the save-slot menu']],
   f9: [['Game', 'Open the load-slot menu']],
   o: [['Game', 'Open the shop']],

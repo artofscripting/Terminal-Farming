@@ -293,6 +293,10 @@ export class Game {
       case 'E': this.mode = 'almanac'; this.ui.almanacTab = 0; this.ui.almanacPage = 0; break;
       case 'M': this.mode = 'map'; break;
       case 'L': this.setStatus(this.toggleFavoriteSeed()); break;
+      case 'V':
+        this.ui.compactHud = !this.ui.compactHud;
+        this.setStatus(`Compact HUD ${this.ui.compactHud ? 'ON' : 'OFF'}.`);
+        break;
       case 'Y': this.mode = 'workshops'; break;
       case 'C': this.openSeedPlant(); break;
       case 'H':
@@ -880,7 +884,7 @@ export class Game {
     if (this.mode === 'save') { menus.renderSaveMenu(this.renderer, this.state, this.save.slotExists, this.ui.saveConfirm); return; }
     if (this.mode === 'load') { menus.renderLoadMenu(this.renderer, this.save.slotExists); return; }
     if (this.mode === 'pause') { menus.renderPause(this.renderer, this.ui.pauseConfirm); return; }
-    renderScene(this.renderer, this.camera, this.state, this.currentTileOverrides());
+    renderScene(this.renderer, this.camera, this.state, this.currentTileOverrides(), this.ui.compactHud);
   }
 
   renderShop() {
