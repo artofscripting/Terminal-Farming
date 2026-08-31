@@ -171,7 +171,7 @@ const MODES = {
     // hasSaves() lives on the save backend, not state -- title only offers
     // Load once the caller confirms a save actually exists (see below).
     if (ui.hasSaves) out.push({ key: '2', label: 'Load' });
-    out.push({ key: '3', label: 'Custom' }, { key: 'q', label: 'Quit' });
+    out.push({ key: '3', label: 'Custom' }, { key: 'i', label: 'Letter' }, { key: 'q', label: 'Quit' });
     return { actions: out, back: null };
   },
   customgame() {
@@ -187,6 +187,20 @@ const MODES = {
   },
   game(state) {
     return { actions: gameActions(state), back: null };
+  },
+  // Welcome splash (menus.renderSplash) -- 'enter' is the primary action
+  // (dismiss and start farming), n/p just page through the notes. Any key
+  // besides n/p dismisses it (keySplash), so a physical Enter/Escape/Space
+  // all work too -- this button is just the touch-friendly one.
+  splash() {
+    return {
+      actions: [
+        { key: 'p', label: 'Prev' },
+        { key: 'n', label: 'Next' },
+        { key: 'enter', label: 'Start' },
+      ],
+      back: null,
+    };
   },
   help(state, ui) {
     return { actions: helpActions(ui), back: 'escape' };

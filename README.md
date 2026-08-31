@@ -1,9 +1,11 @@
 |# Terminal Harvest
 
 
-**Title screen:** `1` new game · `2` load (if saves exist) · `3` custom game (set starting gold, plots, and season) · `q` quit
+**Title screen:** `1` new game · `2` load (if saves exist) · `3` custom game (set starting gold, plots, and season) · `i` read the welcome letter · `q` quit
 
 **Custom game (`3`):** press `1`/`2`/`3` to cycle each setting through its own preset list, then **Enter** to start — starting gold (100g–50,000g), starting plots (1–5, extras beyond the home plot are cleared and tilled the same way a paid expansion is, free), and starting season. `1` new game always uses the defaults (500g, 1 plot, spring).
+
+**Welcome letter:** starting a new game (`1`, or Custom's Enter) opens a short in-world splash first — a few notes left around the farmhouse explaining the basic till/plant/water/harvest loop, what Space/`A` (auto-farm the field) and `R` (auto-harvest) do, what auto-play (`Z`) does and when it starts spending on upgrades, and a tour of the town/ranch/kitchen/workshops/tractor/labor systems. Page through with `n`/`p`; any other key drops you onto the farm. Reachable again anytime from the title screen with `i`, without starting a new game.
 
 The top-right of the HUD always shows those 3 starting numbers (gold-plots-season#, e.g. `2500-3-2` for 2500g/3 plots/summer) so a save's difficulty is visible at a glance, plus a red **X** if cheat mode (the console's `cheatmode enable`) has ever been turned on for that save — it stays lit even after disabling cheats again. **`V`** toggles a compact HUD that drops that corner plus the XP progress numbers, for narrower terminals where those are the first things to get crowded out. Current farm value always shows on its own HUD line, regardless of the compact toggle. The HUD is normally 3 lines, but any line that doesn't fit the terminal's width wraps onto extra lines rather than getting clipped -- the map viewport just starts lower that frame instead.
 

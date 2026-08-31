@@ -201,6 +201,7 @@ export class Game {
     switch (this.mode) {
       case 'title': return this.keyTitle(k);
       case 'customgame': return this.keyCustomGame(k);
+      case 'splash': return this.keySplash(k);
       case 'game': return this.keyGame(k);
       case 'help': return this.keyHelp(k);
       case 'inventory': return this.keyInventory(k);
@@ -228,7 +229,7 @@ export class Game {
   keyTitle(k) {
     if (k === '1') {
       this.state = newGame();
-      this.mode = 'game';
+      this.enterSplash('game');
     } else if (k === '2' && this.save.hasSaves()) {
       this.mode = 'load';
     } else if (k === '3') {
@@ -238,9 +239,30 @@ export class Game {
         seasonIdx: 0,
       };
       this.mode = 'customgame';
+    } else if (k === 'i') {
+      this.enterSplash('title');
     } else if (k === 'q') {
       this.quit();
     }
+    this.render();
+  }
+
+  // ---- Welcome splash (menus.renderSplash): a handful of in-world notes
+  // explaining the basics, auto-farm/auto-harvest, and auto-play, shown
+  // once on a brand new game -- also reachable from the title screen (i)
+  // without starting one, in which case dismissing it returns to the title
+  // instead of dropping into a game that was never actually started.
+  enterSplash(returnMode) {
+    this.mode = 'splash';
+    this.ui.splashPage = 0;
+    this.ui.splashReturnMode = returnMode;
+  }
+
+  keySplash(k) {
+    const last = menus.SPLASH_PAGE_COUNT - 1;
+    if (k === 'n') this.ui.splashPage = Math.min(last, (this.ui.splashPage || 0) + 1);
+    else if (k === 'p') this.ui.splashPage = Math.max(0, (this.ui.splashPage || 0) - 1);
+    else this.mode = this.ui.splashReturnMode || 'game';
     this.render();
   }
 
@@ -257,7 +279,7 @@ export class Game {
         plots: CUSTOM_PLOT_PRESETS[c.plotsIdx] - 1, // presets are TOTAL plots; newGame wants extra beyond the home one
         season: CUSTOM_SEASONS[c.seasonIdx],
       });
-      this.mode = 'game';
+      this.enterSplash('game');
     }
     this.render();
   }
@@ -891,6 +913,7 @@ export class Game {
 
   renderMode() {
     if (this.mode === 'title') { this.renderTitle(); return; }
+    if (this.mode === 'splash') { menus.renderSplash(this.renderer, this.ui.splashPage || 0); return; }
     if (this.mode === 'customgame') {
       menus.renderCustomGame(this.renderer, this.ui.customGame, CUSTOM_GOLD_PRESETS, CUSTOM_PLOT_PRESETS, CUSTOM_SEASONS);
       return;
@@ -959,7 +982,8 @@ export class Game {
     r.text(cx - 12, 9, '2  Load game', loadColor, [10, 16, 12]);
     r.text(cx - 12, 10, '3  Custom game', [220, 220, 210], [10, 16, 12]);
     r.text(cx - 12, 11, 'q  Quit', [220, 220, 210], [10, 16, 12]);
-    r.text(cx - 12, 14, 'Buy plots, farm the world.', [150, 180, 150], [10, 16, 12]);
+    r.text(cx - 12, 12, 'i  Read the welcome letter', [150, 180, 150], [10, 16, 12]);
+    r.text(cx - 12, 15, 'Buy plots, farm the world.', [150, 180, 150], [10, 16, 12]);
   }
 
   flush() {

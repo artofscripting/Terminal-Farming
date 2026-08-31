@@ -913,6 +913,108 @@ function listMap(renderer, y, map, nameOf) {
   return y;
 }
 
+// Welcome splash: shown once when a new game starts (also reachable from
+// the title screen via 'i', without starting one), told in-world as a
+// handful of notes left around the farmhouse rather than a dry key
+// reference -- HELP_PAGES (below) already covers that. Paged with n/p like
+// Help; any other key dismisses it (see game.js's keySplash).
+const SPLASH_PAGES = [
+  [
+    'A LETTER LEFT ON THE FARMHOUSE TABLE',
+    '',
+    'Welcome, stranger --',
+    '',
+    "I'm Marla, the mayor here. Word reached me someone finally",
+    "came to work this old plot, and I couldn't be happier -- it's",
+    'sat fallow long enough.',
+    '',
+    'Getting started: walk onto a patch of land with WASD or the',
+    'arrows (or tap it, on a phone). Till it with t, plant a seed',
+    'with p, water it with e. Sleep when tired (z) and it grows',
+    "while you dream. When it's ripe, r brings it home. Sell what",
+    'you keep at my shop -- o, then 2 -- and buy more seed there',
+    'too, with o then 1.',
+    '',
+    "That's the whole of farming. Everything else just makes it",
+    'easier, faster, or more interesting.',
+    '',
+    '                                                   -- Marla',
+  ],
+  [
+    'A SECOND PAGE, IN A DIFFERENT HAND',
+    '',
+    'Marla asked me to explain the shortcuts -- she never uses',
+    'them herself.',
+    '',
+    'Space (or A) works your whole field in one go: tills what',
+    "needs tilling, plants your selected seed, waters what's dry.",
+    "One press, whole farm, so long as you've got the energy.",
+    '',
+    'R harvests every ripe crop in reach, all at once -- no need',
+    'to walk each stalk down and back by hand.',
+    '',
+    "Together that's a full day's work in two keystrokes: press",
+    'Space before you sleep to set everything growing, then R',
+    'when you wake to bring it all in.',
+    '',
+    '                                          -- Sam, at the shop',
+  ],
+  [
+    'A HASTY NOTE, PINNED TO THE DOOR',
+    '',
+    "If even that's more than you feel like thinking about,",
+    "there's Z.",
+    '',
+    'Press it and the farm runs itself: tilling, planting,',
+    'watering, harvesting, selling, buying seed for tomorrow --',
+    'all without you lifting a finger. Past 2000g, it starts',
+    'spending on tools, buildings, and animals too, then on more',
+    "land once there's nothing left worth improving.",
+    '',
+    'Press Z again whenever you want the wheel back. It sleeps',
+    "you and wakes you if you run low on energy along the way --",
+    "it won't just stand there.",
+    '',
+    "It's not cheating. It's just having a very reliable",
+    'neighbor.',
+  ],
+  [
+    'A DOG-EARED PAGE, TORN FROM A GUIDEBOOK',
+    '',
+    "Beyond the dirt, there's a whole town here.",
+    '',
+    "Town (') is where the people are -- Marla, Sam, Pip the",
+    'forager, and a couple dozen others, each with their own',
+    'quests, gifts, and a heart meter that likes some presents',
+    'better than others.',
+    '',
+    'The Ranch and animal stalls turn hay into eggs, milk, wool,',
+    'and honey. The Kitchen (b) turns those, and your crops, into',
+    'dishes worth more than their parts. Workshops (Y) turn logs',
+    'and cotton into planks, thread, and cloth.',
+    '',
+    'A tractor plows and waters a whole plot at a speed no hoe',
+    'can match. Hired hands (u) do the same while you tend',
+    'something else. Festivals (f) bring a contest and better',
+    'prices. The Almanac, Map, and Stats are just for looking',
+    'things up.',
+    '',
+    'None of it is required. All of it pays for itself.',
+    '',
+    '                                 -- torn off before a name',
+  ],
+];
+
+export const SPLASH_PAGE_COUNT = SPLASH_PAGES.length;
+
+export function renderSplash(renderer, page) {
+  const idx = Math.max(0, Math.min(SPLASH_PAGES.length - 1, page));
+  panel(renderer, `Welcome  (n/p to page, ${idx + 1}/${SPLASH_PAGES.length})`);
+  const lines = SPLASH_PAGES[idx];
+  lines.forEach((line, i) => renderer.text(3, 3 + i, line, i === 0 ? TITLE : TEXT, PANEL_BG));
+  renderer.text(2, renderer.height - 2, 'Press any other key to start farming.', DIM, PANEL_BG);
+}
+
 const HELP_PAGES = [
   [
     'TERMINAL HARVEST — Controls',
