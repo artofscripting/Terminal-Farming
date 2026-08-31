@@ -26,10 +26,101 @@
       padding: 8px;
       box-sizing: border-box;
     }
+
+    /* On-screen touch controls (web/main.js): a D-pad + action buttons
+       overlaid on the terminal so mobile play never needs the OS keyboard
+       for ordinary actions. Fixed position, semi-transparent, high z-index
+       so they sit on top of (and intercept taps meant for) the map below --
+       tap-to-move only listens on the terminal element itself, so a tap
+       landing on a button here never reaches it. Hidden by default; JS
+       shows them automatically on a touch-capable device, and #touch-toggle
+       flips them manually either way. */
+    #touch-controls {
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      display: none;
+      justify-content: space-between;
+      align-items: flex-end;
+      padding: 10px;
+      box-sizing: border-box;
+      pointer-events: none;
+      z-index: 10;
+      gap: 8px;
+    }
+    #touch-controls.visible { display: flex; }
+    #touch-controls .pad {
+      display: grid;
+      grid-template-columns: repeat(3, 48px);
+      grid-template-rows: repeat(3, 48px);
+      gap: 4px;
+      pointer-events: auto;
+    }
+    #touch-controls button {
+      width: 48px;
+      height: 48px;
+      border-radius: 8px;
+      border: 1px solid rgba(200, 220, 200, 0.35);
+      background: rgba(20, 30, 24, 0.55);
+      color: #dce8dc;
+      font: 15px "Cascadia Mono", "Courier New", monospace;
+      touch-action: none;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    #touch-controls button:active {
+      background: rgba(90, 140, 90, 0.6);
+    }
+    #touch-controls .dpad-up { grid-column: 2; grid-row: 1; }
+    #touch-controls .dpad-left { grid-column: 1; grid-row: 2; }
+    #touch-controls .dpad-right { grid-column: 3; grid-row: 2; }
+    #touch-controls .dpad-down { grid-column: 2; grid-row: 3; }
+    #touch-controls .actions {
+      display: grid;
+      grid-template-columns: repeat(4, 44px);
+      grid-auto-rows: 44px;
+      gap: 4px;
+      pointer-events: auto;
+    }
+    #touch-controls .actions button { width: 44px; height: 44px; font-size: 13px; }
+    #touch-toggle {
+      position: fixed;
+      right: 8px;
+      top: 8px;
+      z-index: 11;
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
+      border: 1px solid rgba(200, 220, 200, 0.35);
+      background: rgba(20, 30, 24, 0.55);
+      color: #dce8dc;
+      font-size: 16px;
+      touch-action: manipulation;
+    }
   </style>
 </head>
 <body>
   <div id="terminal"></div>
+  <button id="touch-toggle" title="Toggle touch controls">&#9639;</button>
+  <div id="touch-controls">
+    <div class="pad" id="touch-dpad">
+      <button class="dpad-up" data-key="up">&#9650;</button>
+      <button class="dpad-left" data-key="left">&#9664;</button>
+      <button class="dpad-right" data-key="right">&#9654;</button>
+      <button class="dpad-down" data-key="down">&#9660;</button>
+    </div>
+    <div class="actions" id="touch-actions">
+      <button data-key="t">T</button>
+      <button data-key="p">P</button>
+      <button data-key="e">E</button>
+      <button data-key="r">R</button>
+      <button data-key="i">I</button>
+      <button data-key="o">O</button>
+      <button data-key="z">z</button>
+      <button data-key="escape">Esc</button>
+    </div>
+  </div>
   <script type="module" src="/src/web/main.js"></script>
 </body>
 </html>
