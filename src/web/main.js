@@ -185,9 +185,10 @@ term.onResize(({ cols, rows }) => game.resize(cols, rows));
 // contextual action buttons that dispatch the exact same synthetic key
 // events WebInput's keyboard path produces, so every mode/menu handles
 // them identically to a physical keypress -- no separate touch-specific
-// logic in game.js. Deliberately never focuses the terminal afterward,
-// since that would pop the OS keyboard and defeat the point of having
-// these.
+// logic in game.js. Deliberately never (re)focuses the terminal from a
+// button tap, since that would pop the OS keyboard and defeat the point of
+// having these -- the one exception is entering the console, which does
+// need real typed text; see renderTouchActions() below.
 const SPECIAL_KEYS = new Set(['up', 'down', 'left', 'right', 'escape', 'enter', 'backspace', 'f5', 'f9']);
 
 // Which action-button page is showing (ui/touchActions.js paginates once a
@@ -275,7 +276,16 @@ function makeButton({ key, label, active }) {
 function renderTouchActions() {
   if (game.mode !== lastMode) {
     touchPage = 0;
+    const previousMode = lastMode;
     lastMode = game.mode;
+    // The console needs real typed text, which touch buttons can't provide
+    // -- focusing xterm's hidden textarea pops the mobile OS keyboard, same
+    // as it would for any other text field. Otherwise the terminal is
+    // deliberately never (re)focused (see term.focus() below at startup),
+    // since that would pop the keyboard during ordinary touch play. Blur on
+    // the way back out so the keyboard doesn't linger over the map.
+    if (game.mode === 'console') term.focus();
+    else if (previousMode === 'console') term.blur();
   }
   updateHeaderOffset();
   const autoPlaying = Boolean(game.autoPlayTimer);
