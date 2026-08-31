@@ -6,7 +6,7 @@ import { Camera } from '../engine/camera.js';
 import { WebInput } from '../engine/webInput.js';
 import * as save from '../state/webSave.js';
 import { Game } from '../game.js';
-import { contextualActions } from '../ui/touchActions.js';
+import { contextualActions, showDpad } from '../ui/touchActions.js';
 
 const container = document.getElementById('terminal');
 const rotateSuggest = document.getElementById('rotate-suggest');
@@ -14,6 +14,7 @@ const rotateDismiss = document.getElementById('rotate-dismiss');
 const touchControls = document.getElementById('touch-controls');
 const touchToggle = document.getElementById('touch-toggle');
 const touchActions = document.getElementById('touch-actions');
+const touchDpad = document.getElementById('touch-dpad');
 
 // The game's HUD/menu layout assumes at least MIN_COLS columns (drawn at
 // fixed positions, not reflowed) -- on a narrow phone, letting FitAddon
@@ -108,7 +109,20 @@ term.onResize(({ cols, rows }) => game.resize(cols, rows));
 // since that would pop the OS keyboard and defeat the point of having
 // these.
 const SPECIAL_KEYS = new Set(['up', 'down', 'left', 'right', 'escape', 'enter', 'backspace', 'f5', 'f9']);
+
+// Which action-button page is showing (ui/touchActions.js paginates once a
+// mode's relevant action set exceeds 16 -- e.g. 'game' mode with a lot
+// going on at once). Reset whenever the mode changes, since a page index
+// from a previous screen has no meaning on a new one.
+let touchPage = 0;
+let lastMode = null;
+
 function pressKey(key) {
+  if (key.startsWith('__page:')) {
+    touchPage = Number(key.slice('__page:'.length));
+    renderTouchActions();
+    return;
+  }
   if (SPECIAL_KEYS.has(key)) game.onKey(key, { name: key, shift: false }, undefined);
   else game.onKey(key, { name: key }, key);
 }
@@ -134,15 +148,27 @@ touchActions.addEventListener('pointerdown', (e) => {
 });
 
 function renderTouchActions() {
-  const actions = contextualActions(game.state, game.mode);
+  if (game.mode !== lastMode) {
+    touchPage = 0;
+    lastMode = game.mode;
+  }
+  const autoPlaying = Boolean(game.autoPlayTimer);
+  const actions = contextualActions(game.state, game.mode, {
+    ui: game.ui,
+    page: touchPage,
+    autoPlaying,
+    hasSaves: save.hasSaves(),
+  });
   touchActions.replaceChildren(
-    ...actions.map(({ key, label }) => {
+    ...actions.map(({ key, label, active }) => {
       const btn = document.createElement('button');
       btn.dataset.key = key;
       btn.textContent = label;
+      if (active) btn.classList.add('active');
       return btn;
     })
   );
+  touchDpad.style.display = showDpad(game.mode, autoPlaying) ? '' : 'none';
 }
 
 const origRender = game.render.bind(game);

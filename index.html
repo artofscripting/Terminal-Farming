@@ -91,6 +91,13 @@
     #touch-controls button:active {
       background: rgba(90, 140, 90, 0.6);
     }
+    /* Page-tab buttons (ui/touchActions.js's paginate(), for a mode with
+       more than 16 relevant actions at once) -- the active page's tab
+       stays visibly highlighted between taps, not just on :active press. */
+    #touch-controls .actions button.active {
+      background: rgba(70, 150, 70, 0.55);
+      border-color: rgba(140, 230, 140, 0.7);
+    }
     #touch-controls .dpad-up { grid-column: 2; grid-row: 1; }
     #touch-controls .dpad-left { grid-column: 1; grid-row: 2; }
     #touch-controls .dpad-right { grid-column: 3; grid-row: 2; }
