@@ -10,8 +10,6 @@ import { currentHudRows } from '../ui/render.js';
 import { contextualActions, showDpad } from '../ui/touchActions.js';
 
 const container = document.getElementById('terminal');
-const rotateSuggest = document.getElementById('rotate-suggest');
-const rotateDismiss = document.getElementById('rotate-dismiss');
 const touchControls = document.getElementById('touch-controls');
 const headerControls = document.getElementById('header-controls');
 const touchToggle = document.getElementById('touch-toggle');
@@ -77,24 +75,6 @@ const fit = new FitAddon();
 term.loadAddon(fit);
 term.open(container);
 
-// Suggests rotating to landscape, but only when portrait genuinely can't
-// fit MIN_COLS even at the font-size floor -- not just "you're in
-// portrait," which would be noise on a tablet with plenty of width.
-// Dismissible per portrait session; clears once back in landscape so it
-// can reappear if they return to a cramped portrait later.
-let rotateDismissed = false;
-rotateDismiss.addEventListener('pointerdown', (e) => {
-  e.preventDefault();
-  rotateDismissed = true;
-  rotateSuggest.classList.remove('visible');
-});
-
-function updateRotateSuggest(cramped) {
-  const portrait = window.matchMedia('(orientation: portrait)').matches;
-  if (!portrait) rotateDismissed = false;
-  rotateSuggest.classList.toggle('visible', portrait && cramped && !rotateDismissed);
-}
-
 // Row height and the terminal's own viewport offset only change on
 // resize/orientation change; cached here so updateHeaderOffset() (which
 // runs after every render, since the HUD's row count can change frame to
@@ -118,9 +98,7 @@ function fitToWidth() {
   // the tradeoff of overriding the auto-fit result on purpose.
   const size = clampFontSize(autoSize + fontSizeOffset);
   term.options.fontSize = size;
-  dims = fit.proposeDimensions();
   fit.fit();
-  updateRotateSuggest(Boolean(dims && dims.cols < MIN_COLS));
   fontDec.disabled = size <= MIN_FONT_SIZE;
   fontInc.disabled = size >= MAX_FONT_SIZE;
 

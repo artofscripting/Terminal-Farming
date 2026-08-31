@@ -196,45 +196,10 @@
     #header-controls button:disabled {
       opacity: 0.35;
     }
-
-    /* Landscape suggestion (web/main.js): shown only when fitToWidth() had
-       to shrink the font all the way to its legibility floor and still
-       couldn't comfortably fit -- a genuine signal rotating would help,
-       not just "you're in portrait." Dismissible; never blocks play. */
-    #rotate-suggest {
-      display: none;
-      position: fixed;
-      left: 0;
-      right: 0;
-      top: 0;
-      z-index: 12;
-      min-height: 44px;
-      padding: 8px 56px 8px 12px;
-      box-sizing: border-box;
-      background: rgba(40, 30, 10, 0.85);
-      color: #f0dca0;
-      font: 13px "Cascadia Mono", "Courier New", monospace;
-      border-bottom: 1px solid rgba(240, 220, 160, 0.35);
-    }
-    #rotate-suggest.visible { display: block; }
-    #rotate-dismiss {
-      position: absolute;
-      right: 4px;
-      top: 0;
-      width: 44px;
-      height: 44px;
-      border-radius: 6px;
-      border: 1px solid rgba(240, 220, 160, 0.35);
-      background: transparent;
-      color: #f0dca0;
-      font-size: 14px;
-      touch-action: manipulation;
-    }
   </style>
 </head>
 <body>
   <div id="terminal"></div>
-  <div id="rotate-suggest">Rotate your device for a more comfortable view. <button id="rotate-dismiss" title="Dismiss">&times;</button></div>
   <div id="header-controls">
     <button id="font-dec" title="Decrease font size">A&minus;</button>
     <button id="font-inc" title="Increase font size">A&plus;</button>
