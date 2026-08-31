@@ -305,7 +305,7 @@ export class Game {
       case 'y': this.setStatus(toggleAuto(this.state)); break;
       case ',': this.setStatus(cycleZone(this.state)); break;
       case 'z': this.setStatus(sleep(this.state)); this.save.save(this.state, 'auto'); break;
-      case 'v': case 'f5': this.mode = 'save'; break;
+      case 'v': case 'f5': this.mode = 'save'; this.ui.saveConfirm = null; break;
       case 'f9': this.mode = 'load'; break;
       case 'o': this.mode = 'shop'; this.ui.shopScreen = 'root'; break;
       case 'i': this.mode = 'inventory'; break;
@@ -661,10 +661,26 @@ export class Game {
 
   // ---- Save / Load menus ----
   keySave(k) {
+    if (this.ui.saveConfirm) {
+      if (k === 'y') {
+        const slot = this.ui.saveConfirm;
+        this.ui.saveConfirm = null;
+        this.setStatus(this.save.save(this.state, slot));
+        this.mode = 'game';
+      } else if (k === 'n' || k === 'escape') {
+        this.ui.saveConfirm = null;
+      }
+      this.render();
+      return;
+    }
     if (k === 'q' || k === 'escape' || k === 'v') { this.mode = 'game'; this.render(); return; }
     if (k === '1' || k === '2' || k === '3') {
-      this.setStatus(this.save.save(this.state, k));
-      this.mode = 'game';
+      if (this.save.slotExists(k)) {
+        this.ui.saveConfirm = k;
+      } else {
+        this.setStatus(this.save.save(this.state, k));
+        this.mode = 'game';
+      }
     }
     if (k === 'x') {
       this.setStatus(this.save.exportSave(this.state));
@@ -708,7 +724,7 @@ export class Game {
       return;
     }
     if (k === '1' || k === 'q' || k === 'escape' || k === 'enter') this.mode = 'game';
-    else if (k === '2') this.mode = 'save';
+    else if (k === '2') { this.mode = 'save'; this.ui.saveConfirm = null; }
     else if (k === '3') this.mode = 'load';
     else if (k === '4') this.ui.pauseConfirm = 'restart';
     else if (k === '5') this.ui.pauseConfirm = 'quit';
@@ -822,7 +838,7 @@ export class Game {
       this.ui.seedPlantKeys = menus.renderSeedPlant(this.renderer, this.state, { mult: this.ui.seedPlantMult || 1 });
       return;
     }
-    if (this.mode === 'save') { menus.renderSaveMenu(this.renderer, this.state, this.save.slotExists); return; }
+    if (this.mode === 'save') { menus.renderSaveMenu(this.renderer, this.state, this.save.slotExists, this.ui.saveConfirm); return; }
     if (this.mode === 'load') { menus.renderLoadMenu(this.renderer, this.save.slotExists); return; }
     if (this.mode === 'pause') { menus.renderPause(this.renderer, this.ui.pauseConfirm); return; }
     renderScene(this.renderer, this.camera, this.state, this.currentTileOverrides());

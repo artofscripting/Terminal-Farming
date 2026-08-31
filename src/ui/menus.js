@@ -555,8 +555,15 @@ export function renderMap(renderer, state) {
 }
 
 // Save-slot menu. `slotExists` abstracts over the active save backend.
-export function renderSaveMenu(renderer, state, slotExists) {
+// `confirm` is null | '1' | '2' | '3' -- the slot pending an overwrite.
+export function renderSaveMenu(renderer, state, slotExists, confirm) {
   panel(renderer, 'Save game');
+  if (confirm) {
+    renderer.text(3, 3, `Overwrite slot ${confirm}? This can't be undone.`, [230, 120, 120], PANEL_BG);
+    row(renderer, 5, 'y', 'Yes, overwrite');
+    row(renderer, 6, 'n', 'Cancel');
+    return;
+  }
   for (let i = 1; i <= 3; i++) {
     const exists = slotExists(String(i));
     row(renderer, 2 + i, String(i), `Slot ${i}${exists ? '  (overwrite)' : '  (empty)'}`);
