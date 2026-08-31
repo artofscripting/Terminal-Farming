@@ -36,7 +36,7 @@ Energy drops with actions. Sleep restores it. Eat cooked food in the kitchen whe
 |-----|--------|
 | WASD / arrows / hjkl | Move (costs 1 energy, 0.1 on roads; a tenth of that while tractor-mounted — 0.1 / 0.01) |
 | Click / tap the map (web build) | Walk there (real pathing); tap the tile you're standing on to harvest it if it's ripe |
-| On-screen D-pad + action buttons (web build) | Same as the matching keys (movement, till/plant/water/harvest, inventory, shop, sleep, Esc) -- shown automatically on a touch device, toggle with the button top-right |
+| On-screen D-pad + action buttons (web build) | D-pad matches the movement keys. Action buttons are contextual -- only what's actually possible right now (till/plant/water/harvest/gather/chop/fertilize/irrigate/buy plot/mount, based on the tile underfoot) plus reachable screens (inventory, shop, sleep, kitchen/town/etc. once available, up to 16 total) -- shown automatically on a touch device, toggle with the button top-right |
 | Swipe the map (web build) | Move one tile in the swipe direction -- same as one press of the matching arrow key. A short tap still walks/harvests as above |
 | Tap a menu row (web build) | Presses whatever key that row shows (works on every menu -- shop, save/load, ranch, almanac, etc.) -- no OS keyboard needed to navigate menus |
 

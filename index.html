@@ -44,14 +44,16 @@
       box-sizing: border-box;
     }
 
-    /* On-screen touch controls (web/main.js): a D-pad + action buttons
-       overlaid on the terminal so mobile play never needs the OS keyboard
-       for ordinary actions. Fixed position, semi-transparent, high z-index
-       so they sit on top of (and intercept taps meant for) the map below --
-       tap-to-move only listens on the terminal element itself, so a tap
-       landing on a button here never reaches it. Hidden by default; JS
-       shows them automatically on a touch-capable device, and #touch-toggle
-       flips them manually either way. */
+    /* On-screen touch controls (web/main.js): a D-pad + contextual action
+       buttons overlaid on the terminal so mobile play never needs the OS
+       keyboard for ordinary actions. Fixed position, semi-transparent, high
+       z-index so they sit on top of (and intercept taps meant for) the map
+       below -- tap-to-move only listens on the terminal element itself, so
+       a tap landing on a button here never reaches it. Hidden by default;
+       JS shows them automatically on a touch-capable device, and
+       #touch-toggle flips them manually either way. --vpad (top/bottom
+       padding, ~3 terminal lines) is set from JS since it depends on the
+       auto-shrunk font's actual row height. */
     #touch-controls {
       position: fixed;
       left: 0;
@@ -60,7 +62,7 @@
       display: none;
       justify-content: space-between;
       align-items: flex-end;
-      padding: 10px;
+      padding: var(--vpad, 24px) 10px;
       box-sizing: border-box;
       pointer-events: none;
       z-index: 10;
@@ -93,14 +95,28 @@
     #touch-controls .dpad-left { grid-column: 1; grid-row: 2; }
     #touch-controls .dpad-right { grid-column: 3; grid-row: 2; }
     #touch-controls .dpad-down { grid-column: 2; grid-row: 3; }
+    /* Contextual action buttons (web/main.js + ui/touchActions.js): count
+       and labels vary with what's actually possible right now (up to 16),
+       so this wraps by content rather than a fixed grid -- min-width keeps
+       the 44px touch-target floor, but a longer label like "Dismount" can
+       grow past that instead of getting clipped. */
     #touch-controls .actions {
-      display: grid;
-      grid-template-columns: repeat(4, 44px);
-      grid-auto-rows: 44px;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      align-content: flex-end;
       gap: 4px;
+      max-width: 62vw;
       pointer-events: auto;
     }
-    #touch-controls .actions button { width: 44px; height: 44px; font-size: 13px; }
+    #touch-controls .actions button {
+      min-width: 44px;
+      height: 44px;
+      padding: 0 6px;
+      font-size: 10px;
+      line-height: 1.1;
+      white-space: nowrap;
+    }
     #touch-toggle {
       position: fixed;
       right: 8px;
@@ -162,16 +178,9 @@
       <button class="dpad-right" data-key="right">&#9654;</button>
       <button class="dpad-down" data-key="down">&#9660;</button>
     </div>
-    <div class="actions" id="touch-actions">
-      <button data-key="t">T</button>
-      <button data-key="p">P</button>
-      <button data-key="e">E</button>
-      <button data-key="r">R</button>
-      <button data-key="i">I</button>
-      <button data-key="o">O</button>
-      <button data-key="z">z</button>
-      <button data-key="escape">Esc</button>
-    </div>
+    <!-- Populated dynamically by web/main.js from ui/touchActions.js's
+         contextualActions() -- see that module for what shows up when. -->
+    <div class="actions" id="touch-actions"></div>
   </div>
   <script type="module" src="/src/web/main.js"></script>
 </body>
