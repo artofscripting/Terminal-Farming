@@ -230,7 +230,11 @@ actionGroup.addEventListener('pointerdown', (e) => {
 function makeButton({ key, label, active }) {
   const btn = document.createElement('button');
   btn.dataset.key = key;
-  btn.textContent = label;
+  // Labels stay short abbreviations rather than growing the button wide to
+  // fit on one line -- a two-(or more-)word label breaks onto a second line
+  // after the first word instead (index.html's .actions button is
+  // white-space: pre-line, so this \n actually renders as a line break).
+  btn.textContent = label.replace(' ', '\n');
   if (active) btn.classList.add('active');
   return btn;
 }
