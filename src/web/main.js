@@ -207,12 +207,33 @@ function pressKey(key) {
   else game.onKey(key, { name: key }, key);
 }
 
+// Holding a D-pad button keeps stepping in that direction, same as holding
+// a physical arrow key (the OS/browser auto-repeats a held keydown). First
+// step is immediate; REPEAT_DELAY is the usual pause before repeating
+// starts, then it steps every REPEAT_INTERVAL until released.
+const DPAD_REPEAT_DELAY = 350;
+const DPAD_REPEAT_INTERVAL = 120;
+
 // D-pad buttons are static markup; wire each one directly.
 for (const btn of touchControls.querySelectorAll('.pad button[data-key]')) {
+  let repeatTimeout = null;
+  let repeatInterval = null;
+  const stopRepeat = () => {
+    clearTimeout(repeatTimeout);
+    clearInterval(repeatInterval);
+    repeatTimeout = null;
+    repeatInterval = null;
+  };
   btn.addEventListener('pointerdown', (e) => {
     e.preventDefault();
     pressKey(btn.dataset.key);
+    repeatTimeout = setTimeout(() => {
+      repeatInterval = setInterval(() => pressKey(btn.dataset.key), DPAD_REPEAT_INTERVAL);
+    }, DPAD_REPEAT_DELAY);
   });
+  btn.addEventListener('pointerup', stopRepeat);
+  btn.addEventListener('pointercancel', stopRepeat);
+  btn.addEventListener('pointerleave', stopRepeat);
 }
 
 // Action/tab buttons are regenerated on every render (contextualActions(),
