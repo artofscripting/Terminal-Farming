@@ -873,7 +873,7 @@ export function renderConsole(renderer, state, ui) {
   if (ui.consoleResult) {
     renderer.text(3, 5, ui.consoleResult.msg, ui.consoleResult.ok ? [150, 220, 150] : [230, 120, 120], PANEL_BG);
   }
-  renderer.text(2, renderer.height - 2, 'Type a command, Enter to run. Type "help" for a list. Esc closes.', DIM, PANEL_BG);
+  renderer.text(2, renderer.height - 2, 'Type a command, Enter to run. Type "help" for a list. Esc (or Shift+Backspace) closes.', DIM, PANEL_BG);
 }
 
 export const HELP_PAGE_COUNT = HELP_PAGES.length;

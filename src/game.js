@@ -182,7 +182,7 @@ export class Game {
   }
 
   onKey(name, key, str) {
-    if (this.mode === 'console') return this.keyConsole(name, str);
+    if (this.mode === 'console') return this.keyConsole(name, key, str);
     const raw = str && str.length === 1 && str.charCodeAt(0) >= 32 ? str : name;
     // Everywhere but the console (where it deletes a typed character),
     // Backspace is just another way to back out of a screen -- same as Esc.
@@ -452,8 +452,11 @@ export class Game {
   }
 
   // ---- Command console ----
-  keyConsole(name, str) {
-    if (name === 'escape') {
+  keyConsole(name, key, str) {
+    // Plain Backspace deletes a typed character (below); Shift+Backspace
+    // exits, since Backspace alone can't double as Escape here the way it
+    // does everywhere else in the game.
+    if (name === 'escape' || (name === 'backspace' && key?.shift)) {
       this.mode = 'game';
       this.ui.consoleInput = '';
       this.ui.consoleResult = null;

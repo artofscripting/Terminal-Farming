@@ -36,7 +36,7 @@ export class WebInput {
     const mapped = map[domEvent.key];
     if (mapped) {
       domEvent.preventDefault();
-      this.handler(mapped, { name: mapped }, undefined);
+      this.handler(mapped, { name: mapped, shift: domEvent.shiftKey }, undefined);
       return;
     }
 
