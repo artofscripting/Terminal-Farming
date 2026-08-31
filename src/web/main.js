@@ -248,14 +248,26 @@ actionGroup.addEventListener('pointerdown', (e) => {
   pressKey(btn.dataset.key);
 });
 
+// Labels stay short abbreviations rather than growing the button wide to
+// fit on one line. A label with a space breaks there ("Sell All" ->
+// "Sell"/"All"); a compound abbreviation with no space breaks at its first
+// internal capital instead ("AutoHrv" -> "Auto"/"Hrv"). A plain single word
+// ("Water", "Shop") has neither and stays on one line.
+function splitLabel(label) {
+  const spaceIdx = label.indexOf(' ');
+  if (spaceIdx !== -1) return label.slice(0, spaceIdx) + '\n' + label.slice(spaceIdx + 1);
+  const m = label.match(/[a-z](?=[A-Z])/);
+  if (!m) return label;
+  const idx = m.index + 1;
+  return label.slice(0, idx) + '\n' + label.slice(idx);
+}
+
 function makeButton({ key, label, active }) {
   const btn = document.createElement('button');
   btn.dataset.key = key;
-  // Labels stay short abbreviations rather than growing the button wide to
-  // fit on one line -- a two-(or more-)word label breaks onto a second line
-  // after the first word instead (index.html's .actions button is
-  // white-space: pre-line, so this \n actually renders as a line break).
-  btn.textContent = label.replace(' ', '\n');
+  // index.html's .actions button is white-space: pre-line, so this \n
+  // actually renders as a line break.
+  btn.textContent = splitLabel(label);
   if (active) btn.classList.add('active');
   return btn;
 }
