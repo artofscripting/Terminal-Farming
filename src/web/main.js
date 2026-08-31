@@ -220,10 +220,19 @@ for (const btn of touchControls.querySelectorAll('.pad button[data-key]')) {
 // what screens are currently reachable, and the active mode), so one
 // delegated listener on their shared parent handles whichever buttons exist
 // right now instead of re-binding on every refresh.
-actionGroup.addEventListener('pointerdown', (e) => {
+//
+// This listens for 'click', not 'pointerdown' like the D-pad below --
+// pressing one of these buttons itself triggers the re-render that
+// regenerates them (replaceChildren), so a pointerdown handler would swap
+// the button's DOM node out from under the finger *while the touch is still
+// down*. On Android that left the touch with no live target to hit-test
+// against on release, and the tap fell through to the map underneath
+// instead, moving the player. 'click' only fires once the tap has fully
+// completed (already resolved against the original button), so the
+// replaceChildren() that follows can't race it.
+actionGroup.addEventListener('click', (e) => {
   const btn = e.target.closest('button[data-key]');
   if (!btn) return;
-  e.preventDefault();
   pressKey(btn.dataset.key);
 });
 
