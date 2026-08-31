@@ -2,7 +2,10 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <!-- maximum-scale=1/user-scalable=no plus touch-action: none below stop
+       pinch- and double-tap-zoom from fighting the fixed terminal grid --
+       there's nothing to zoom into here, just characters at a fixed size. -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>Terminal Harvest</title>
   <!-- PWA installability: manifest + icons so "Add to Home Screen" opens a
        real standalone app window instead of just a bookmarked browser tab.
@@ -24,9 +27,11 @@
       height: 100%;
       background: #000;
       overflow: hidden;
+      touch-action: none;
     }
     #terminal {
       width: 100vw;
+      touch-action: none;
       /* 100vh on mobile Safari/Chrome is the height with the address bar
          hidden -- with it showing (the common case on load), that overflows
          the actually-visible viewport and pushes the bottom rows off
