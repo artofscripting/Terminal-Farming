@@ -39,15 +39,25 @@ const DIM = [140, 140, 150];
 const KEYC = [130, 200, 250];
 
 // Every menu screen's key-labeled rows (row(), below) from its most recent
-// render, as {y, key} -- lets a web tap on a menu (game.js's onKey, for any
-// mode besides 'game') synthesize pressing whatever key that row shows,
-// without each of the ~25 menu screens needing its own tap-handling code.
-// panel() resets it (called at the start of every screen's render), so it
-// always reflects only whatever's actually on screen right now.
+// render, as {y, key, label} -- lets a web tap on a menu (game.js's onKey,
+// for any mode besides 'game') synthesize pressing whatever key that row
+// shows, without each of the ~25 menu screens needing its own tap-handling
+// code. ui/touchActions.js also reads the full list (currentRows()) to turn
+// list-heavy screens (shop item lists, kitchen's food list, town's NPC
+// roster, ...) into real on-screen buttons instead of leaving them tappable
+// only by hitting one specific terminal row. panel() resets it (called at
+// the start of every screen's render), so it always reflects only whatever's
+// actually on screen right now.
 let currentRowKeys = [];
 
 export function rowKeyAt(y) {
   return currentRowKeys.find((r) => r.y === y)?.key || null;
+}
+
+// Snapshot of every row on the current screen, for ui/touchActions.js to
+// turn into buttons. Copied so callers can't mutate the live registry.
+export function currentRows() {
+  return currentRowKeys.map(({ key, label }) => ({ key, label }));
 }
 
 function panel(renderer, title) {
@@ -59,8 +69,20 @@ function panel(renderer, title) {
   renderer.text(2, renderer.height - 1, 'q/Esc back', DIM, PANEL_BG);
 }
 
-function row(renderer, y, keyLabel, text, color = TEXT) {
-  currentRowKeys.push({ y, key: keyLabel });
+// Collapses a row's full text into a short touch-button label when no
+// explicit `shortLabel` is given to row() -- strips the padding menus.js
+// uses to line up columns, then cuts to `max` chars on a word boundary so
+// auto-generated buttons stay a reasonable width.
+function shortenRowText(text, max = 12) {
+  const t = text.trim().replace(/\s+/g, ' ');
+  if (t.length <= max) return t;
+  const cut = t.slice(0, max);
+  const sp = cut.lastIndexOf(' ');
+  return (sp > 3 ? cut.slice(0, sp) : cut).trim();
+}
+
+function row(renderer, y, keyLabel, text, color = TEXT, shortLabel) {
+  currentRowKeys.push({ y, key: keyLabel, label: shortLabel || shortenRowText(text) });
   renderer.text(3, y, keyLabel, KEYC, PANEL_BG);
   renderer.text(3 + keyLabel.length + 1, y, text, color, PANEL_BG);
 }

@@ -21,7 +21,7 @@ const WARN = [230, 120, 120];
 
 const HINT_FG = [150, 210, 160];
 
-const HUD_ROWS = 2;
+const HUD_ROWS = 3;
 // Bottom rows: one status line + one "Next:" hint line.
 const STATUS_ROWS = 2;
 
@@ -88,7 +88,7 @@ const PANEL_TITLE = [240, 220, 120];
 const PANEL_LABEL = [150, 160, 175];
 const PANEL_VALUE = [225, 225, 215];
 
-// Bottom-right overlay describing the tile the player is standing on.
+// Top-left overlay describing the tile the player is standing on.
 function drawTilePanel(renderer, state, w, mapTop, mapHeight) {
   const { x, y } = state.player;
   const tile = state.world.getTile(x, y);
@@ -97,9 +97,9 @@ function drawTilePanel(renderer, state, w, mapTop, mapHeight) {
   let boxW = lines.reduce((m, l) => Math.max(m, l.text.length), 0) + 2;
   boxW = Math.min(boxW, w - 2);
   const boxH = lines.length + 2;
-  const x0 = w - boxW;
-  const y0 = mapTop + mapHeight - boxH;
-  if (y0 < mapTop) return;
+  if (boxH > mapHeight) return;
+  const x0 = 0;
+  const y0 = mapTop;
 
   for (let row = 0; row < boxH; row++) {
     renderer.text(x0, y0 + row, ' '.repeat(boxW), PANEL_VALUE, PANEL_BG);
@@ -156,14 +156,17 @@ function tileInfoLines(state, tile, x, y) {
 
 
 
-// `compactHud` (game.js's V toggle) drops the recently-added extras --
-// starting-options corner, XP progress numbers, and farm value -- for
-// narrower terminals where they're the first things to get crowded out.
+// `compactHud` (game.js's V toggle) drops the starting-options corner and
+// XP progress numbers for narrower terminals where they're the first things
+// to get crowded out. Farm value (line 3) is exempt -- it used to be part of
+// that drop list too, but that made it easy to lose track of net worth
+// entirely on a phone-width HUD, so it now always gets its own line.
 function drawHud(renderer, state, w, compactHud) {
   const c = state.calendar;
   const p = state.player;
   renderer.text(0, 0, ' '.repeat(w), HUD_FG, [24, 26, 30]);
   renderer.text(0, 1, ' '.repeat(w), HUD_FG, [20, 22, 26]);
+  renderer.text(0, 2, ' '.repeat(w), HUD_FG, [18, 24, 20]);
 
   const tr = state.tractor;
   const tractorSeg = tr?.owned
@@ -197,13 +200,16 @@ function drawHud(renderer, state, w, compactHud) {
   const forage = p.skills.foraging;
   const line2 = compactHud
     ? ` Farm L${farm.level}  Forage L${forage.level}  |  Seed: ${seed}${seedFav} x${seedCount}  |  Fert: ${fert}  |  Plots: ${state.ownedPlots.size}  |  Q${q}`
-    : ` Farm L${farm.level} (${Math.floor(farm.xp)}/${xpToNextLevel('farming', farm.level)}xp)  Forage L${forage.level} (${Math.floor(forage.xp)}/${xpToNextLevel('foraging', forage.level)}xp)  |  Seed: ${seed}${seedFav} x${seedCount}  |  Fert: ${fert}  |  Plots: ${state.ownedPlots.size}  |  Q${q}  |  Value ${farmValue(state)}g`;
+    : ` Farm L${farm.level} (${Math.floor(farm.xp)}/${xpToNextLevel('farming', farm.level)}xp)  Forage L${forage.level} (${Math.floor(forage.xp)}/${xpToNextLevel('foraging', forage.level)}xp)  |  Seed: ${seed}${seedFav} x${seedCount}  |  Fert: ${fert}  |  Plots: ${state.ownedPlots.size}  |  Q${q}`;
   renderer.text(0, 1, line2, HUD_FG, [20, 22, 26]);
 
-  // Plot info for the tile under the player (right-aligned on line 2).
+  const line3 = ` Value: ${farmValue(state)}g`;
+  renderer.text(0, 2, line3, ACCENT, [18, 24, 20]);
+
+  // Plot info for the tile under the player (right-aligned on line 3).
   const info = plotHint(state);
   if (info) {
-    renderer.text(Math.max(0, w - info.text.length - 1), 1, info.text, info.color, [20, 22, 26]);
+    renderer.text(Math.max(0, w - info.text.length - 1), 2, info.text, info.color, [18, 24, 20]);
   }
 }
 
@@ -297,4 +303,4 @@ function fmtEnergy(n) {
   return (Math.round(n * 100) / 100).toString();
 }
 
-export { WARN };
+export { WARN, HUD_ROWS };

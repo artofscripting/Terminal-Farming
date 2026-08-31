@@ -6,6 +6,7 @@ import { Camera } from '../engine/camera.js';
 import { WebInput } from '../engine/webInput.js';
 import * as save from '../state/webSave.js';
 import { Game } from '../game.js';
+import { HUD_ROWS } from '../ui/render.js';
 import { contextualActions, showDpad } from '../ui/touchActions.js';
 
 const container = document.getElementById('terminal');
@@ -79,6 +80,13 @@ function fitToWidth() {
   const rect = term.element.getBoundingClientRect();
   const rowPx = rect.height > 0 ? rect.height / term.rows : term.options.fontSize * 1.2;
   touchControls.style.setProperty('--vpad', `${Math.round(rowPx * CONTROLS_VPAD_ROWS)}px`);
+  // Bottom of the game HUD header (render.js's drawHud, HUD_ROWS lines), in
+  // viewport pixels -- #touch-toggle sits just below this instead of at a
+  // fixed top offset, so it never covers the header text (notably the
+  // top-right starting-options corner on line 1). Menu screens don't draw
+  // that header at all, so the button just floats a bit above their content
+  // there instead, which is harmless.
+  touchToggle.style.setProperty('--header-h', `${Math.round(rect.top + rowPx * HUD_ROWS)}px`);
 }
 
 fitToWidth();

@@ -3,10 +3,11 @@
 // its own button set reflecting what's actually on screen and pressable
 // right now, rather than one fixed list -- so a menu shows its own
 // options, a screen with a confirm prompt shows y/n, and so on. List-heavy
-// screens (the shop's item lists, town's NPC list, etc.) rely on the
-// tappable-menu-row feature (menus.js's row()) for picking an individual
-// item, and only add a button here for actions that aren't already a row
-// (like "Back" or "Sell All").
+// screens (the shop's item lists, kitchen's food list, town's NPC roster,
+// etc.) get their per-item buttons for free from menus.js's row() registry
+// (see currentRows(), pulled in below) instead of being hand-listed here --
+// this file only adds a button for things that aren't already a row (like
+// "Back", or a mode's own toggle such as Mount/Dismount).
 //
 // Checks approximate the real guard conditions in farming.js/machines.js/
 // etc. (e.g. not checking energy or exact season match) -- the real action
@@ -21,6 +22,7 @@ import { isInTown } from '../systems/town.js';
 import { seedPlantState } from '../systems/seedplant.js';
 import { bountyStatus } from '../systems/bounty.js';
 import { dailyDeal } from '../systems/economy.js';
+import { currentRows } from './menus.js';
 
 const TILLABLE = ['grass', 'field', 'sand'];
 const MAX_BUTTONS = 16;
@@ -135,7 +137,7 @@ function shopActions(state, ui) {
   }
   if (s === 'expand') return [{ key: 'y', label: 'Yes' }, { key: 'n', label: 'No' }];
   if (s === 'sell') return [{ key: 'A', label: 'Sell All' }];
-  return []; // seed/tools/fert/ranch/workshopBuy: pick items by tapping their row
+  return []; // seed/tools/fert/ranch/workshopBuy: item buttons come from menus.js's row() registry
 }
 
 function townActions(state, ui) {
@@ -308,21 +310,31 @@ const MODES = {
   },
 };
 
-// Splits `actions` into pages of PER_PAGE when there are more than
-// MAX_BUTTONS total, prepending page-tab buttons (key "__page:N") for
-// however many pages exist. web/main.js recognizes that key prefix
-// specially to switch pages locally instead of dispatching a game key.
-function paginate(actions, page) {
-  if (actions.length <= MAX_BUTTONS) return actions;
-  const pageCount = Math.ceil(actions.length / PER_PAGE);
+// Splits `actions` into pages of PER_PAGE when the total -- including
+// `pinned` (e.g. a Back button, repeated on every page instead of landing on
+// just whichever page it happens to fall on) -- exceeds MAX_BUTTONS.
+// Prepends page-tab buttons (key "__page:N") for however many pages exist;
+// web/main.js recognizes that key prefix specially to switch pages locally
+// instead of dispatching a game key.
+function paginate(actions, page, pinned = []) {
+  if (actions.length + pinned.length <= MAX_BUTTONS) return [...actions, ...pinned];
+  const perPage = Math.max(1, PER_PAGE - pinned.length);
+  const pageCount = Math.ceil(actions.length / perPage);
   const clamped = Math.max(0, Math.min(pageCount - 1, page));
   const tabs = [];
   for (let i = 0; i < pageCount; i++) {
     tabs.push({ key: `__page:${i}`, label: `Pg${i + 1}`, active: i === clamped });
   }
-  const slice = actions.slice(clamped * PER_PAGE, clamped * PER_PAGE + PER_PAGE);
-  return [...tabs, ...slice];
+  const slice = actions.slice(clamped * perPage, clamped * perPage + perPage);
+  return [...tabs, ...slice, ...pinned];
 }
+
+// Modes whose render path doesn't go through menus.js's panel()/row() --
+// 'game' draws its own HUD+map (render.js's renderScene) and 'title' draws
+// its own screen directly (game.js's renderTitle()) -- so menus.js's row
+// registry there would just be stale leftovers from whatever menu screen was
+// open before, not this screen's own content.
+const NO_ROW_BUTTONS = new Set(['game', 'title']);
 
 // `extra` = { ui, page, autoPlaying, hasSaves }. `ui` is the Game
 // instance's own this.ui (mode-specific sub-state like shopScreen,
@@ -340,8 +352,25 @@ export function contextualActions(state, mode, extra = {}) {
   const entry = MODES[mode];
   if (!entry) return [];
   const { actions, back } = entry(state, { ...ui, hasSaves: extra.hasSaves });
-  const full = back && !actions.some((a) => a.key === back) ? [...actions, { key: back, label: 'Back' }] : actions;
-  return paginate(full, page).slice(0, MAX_BUTTONS);
+  const backBtn = back && !actions.some((a) => a.key === back) ? [{ key: back, label: 'Back' }] : [];
+
+  if (NO_ROW_BUTTONS.has(mode)) {
+    // No row() registry to draw from here -- paginate the curated list
+    // itself ('game' mode's own large action set).
+    return paginate(actions, page, backBtn).slice(0, MAX_BUTTONS);
+  }
+
+  // Every other mode: `actions` (mode-level controls -- toggles, Sell All,
+  // Back, ...) are pinned on every page since they apply regardless of which
+  // item you're looking at; menus.js's row() registry supplies the
+  // (possibly long) per-item list underneath, which is what actually gets
+  // paginated. Anything a row shares with a pinned key (e.g. save/pause's
+  // y/n, whose rows use the same keys as the curated confirm buttons) is
+  // skipped so it doesn't get a second, duplicate button.
+  const pinned = [...actions, ...backBtn];
+  const seen = new Set(pinned.map((a) => a.key));
+  const rowActions = currentRows().filter((r) => !seen.has(r.key));
+  return paginate(rowActions, page, pinned).slice(0, MAX_BUTTONS);
 }
 
 // Whether the D-pad should be shown: only 'game' mode, and not while
