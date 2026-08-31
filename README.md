@@ -41,6 +41,8 @@ Energy drops with actions. Sleep restores it. Eat cooked food in the kitchen whe
 | Tap a menu row (web build) | Presses whatever key that row shows (works on every menu -- shop, save/load, ranch, almanac, etc.) -- no OS keyboard needed to navigate menus |
 
 A dismissible banner suggests rotating to landscape when portrait genuinely can't fit the 80-column layout even at the smallest legible font -- not shown on a tablet or anywhere else with room to spare.
+
+The web build is also installable as a PWA -- "Add to Home Screen" opens it in its own standalone window (no browser address bar) with an app icon, via a manifest + minimal offline-capable service worker.
 | `t` | Till soil |
 | `p` | Plant selected seed |
 | `e` | Water |

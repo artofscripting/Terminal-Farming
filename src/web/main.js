@@ -116,3 +116,16 @@ touchToggle.addEventListener('pointerdown', (e) => {
 if (navigator.maxTouchPoints > 0 || 'ontouchstart' in window) {
   touchControls.classList.add('visible');
 }
+
+// PWA installability (public/manifest.webmanifest, public/sw.js): lets
+// "Add to Home Screen" open a real standalone app window. Registered after
+// load so it never competes with the initial game/asset fetches. Resolved
+// against the actual page URL (not a /-prefixed path) so this still finds
+// sw.js whether served from a domain root or a GitHub Pages project
+// subpath -- and no-ops harmlessly if opened as a standalone file, where
+// service workers can't register at all.
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register(new URL('sw.js', window.location.href).href).catch(() => {});
+  });
+}
